@@ -1,0 +1,1353 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Admin — Monev CKG</title>
+<meta name="robots" content="noindex,nofollow" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<script>
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('monev-theme'); } catch (e) {}
+    var theme = saved === 'dark' || saved === 'light' ? saved : 'light';
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  })();
+</script>
+<style>
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+
+  :root {
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #fafafa;
+    --text: #0a0a0a;
+    --muted: #55554f;
+    --soft: #77776f;
+    --line: #e6e6e6;
+    --line-soft: #f0f0f0;
+    --grid: #f0f0f0;
+    --ok: #0f6b5e;
+    --alert: #b01a1a;
+    --warn: #8a5300;
+    --btn: #0a0a0a;
+    --btn-text: #ffffff;
+    --btn-hover: #262626;
+    --focus: #0a0a0a;
+    --r: 0px;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --gap: 14px;
+    --pad: 22px;
+  }
+  html[data-theme="dark"] {
+    --bg: #08090a;
+    --panel: #101112;
+    --panel-2: #0c0d0e;
+    --text: #ecece8;
+    --muted: #b4b4af;
+    --soft: #8f8f89;
+    --line: #26272c;
+    --line-soft: #1a1b1e;
+    --grid: #161719;
+    --ok: #3fdec9;
+    --alert: #fb4b5b;
+    --warn: #e3b341;
+    --btn: #3fdec9;
+    --btn-text: #06201c;
+    --btn-hover: #6ae8d7;
+    --focus: #3fdec9;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--text);
+    font: 400 17px/1.55 var(--sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px, 48px 48px;
+  }
+  h1, h2, h3, p { margin: 0; }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .mono { font-family: var(--mono); font-size: 14px; }
+  .faint { color: var(--soft); }
+  .muted { color: var(--muted); }
+  .caption { font-family: var(--mono); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+
+  .shell { max-width: 1080px; margin: 0 auto; padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap); }
+  .app[hidden] { display: none !important; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px var(--pad); background: var(--panel);
+    border: 1px solid var(--line); border-bottom-style: dashed; border-radius: var(--r);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand svg { flex: none; }
+  .brand h1 { font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+  .brand .sub { font-size: 14px; color: var(--muted); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none;
+    border: 1px solid var(--line); border-radius: var(--r); background: transparent; cursor: pointer; color: var(--muted);
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--soft); }
+  .icon-btn svg { width: 20px; height: 20px; display: block; }
+  #themeBtn svg[hidden] { display: none; }
+  .nav-link {
+    display: inline-flex; align-items: center; font-size: 15px; text-decoration: none; color: var(--muted);
+    padding: 9px 14px; border: 1px solid var(--line); border-radius: var(--r);
+  }
+  .nav-link:hover { color: var(--text); border-color: var(--soft); }
+
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+  .panel-head { padding: 16px var(--pad); border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 18px; font-weight: 600; }
+  .panel-body { padding: 18px var(--pad); display: flex; flex-direction: column; gap: 14px; }
+  .panel-body p { color: var(--muted); font-size: 16px; max-width: 70ch; }
+
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap;
+    font-size: 16px; font-weight: 500; padding: 10px 16px; border-radius: var(--r);
+    border: 1px solid var(--soft); background: transparent; color: var(--text); text-decoration: none; line-height: 1.2;
+  }
+  .btn:hover:not(:disabled) { background: var(--panel-2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { background: var(--btn); border-color: var(--btn); color: var(--btn-text); }
+  .btn.primary:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--btn-hover); }
+  .btn[aria-busy="true"] { cursor: progress; opacity: .7; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field > label { font-size: 15px; color: var(--muted); }
+  .field input {
+    font: inherit; font-size: 17px; padding: 11px 12px;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+  .file-name { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+  .captcha-row { display: flex; gap: 10px; align-items: center; }
+  .captcha-btn {
+    width: 165px; height: 55px; display: grid; place-items: center; overflow: hidden; padding: 0;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel-2); cursor: pointer; line-height: 0;
+  }
+  .captcha-btn img { width: 150px; height: 50px; display: block; }
+  .captcha-btn .captcha-msg { font-size: 13px; line-height: 1.3; color: var(--muted); padding: 0 8px; text-align: center; }
+  .captcha-btn[aria-busy="true"] { opacity: .6; cursor: progress; }
+  .captcha-row input { width: 110px; letter-spacing: .1em; font-family: var(--mono); font-size: 17px; padding: 11px 12px; border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text); }
+  .field-error { min-height: 1.2em; font-size: 15px; color: var(--alert); }
+  /* gambar captcha disembunyikan sebelum ada src supaya tidak muncul ikon gambar rusak */
+  #captcha:not([src]) { display: none; }
+  .field-error:empty { display: none; }
+  .alt { border-top: 1px solid var(--line-soft); padding-top: 12px; }
+  .alt > summary { cursor: pointer; font-size: 15px; color: var(--muted); }
+
+  /* gerbang sandi: modal wajib, tidak bisa ditutup dengan Esc/klik luar */
+  dialog.gate {
+    width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line);
+    border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+  dialog.gate::backdrop { background: rgba(0, 0, 0, .55); }
+  .gate-body { padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .gate-body .caption { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .gate-body h2 { font-size: 19px; font-weight: 600; }
+  .gate-body p { font-size: 14px; color: var(--muted); }
+  .gate-body input {
+    font: inherit; font-size: 16px; padding: 11px 12px; margin-top: 4px;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+  .gate-body .btn { margin-top: 6px; }
+  .gate-error { min-height: 1.2em; font-size: 13.5px; color: var(--alert); }
+  .gate-foot { font-size: 13px; }
+  .gate-foot a { color: var(--muted); }
+
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
+  .status-cell { background: var(--panel); padding: 16px var(--pad); display: flex; flex-direction: column; gap: 4px; }
+  .status-cell .k { font-family: var(--mono); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .status-cell .v { font-size: 19px; font-weight: 500; }
+  .status-cell .v[data-tone="ok"] { color: var(--ok); }
+  .status-cell .v[data-tone="bad"] { color: var(--alert); }
+  .status-cell .s { font-size: 14px; color: var(--muted); }
+
+  .log { font: 14px/1.65 var(--mono); color: var(--muted); max-height: 260px; overflow: auto; white-space: pre-wrap; background: var(--panel-2); border-top: 1px solid var(--line); padding: 14px var(--pad); }
+  .batch-list { display: flex; flex-direction: column; border: 1px solid var(--line); }
+  .batch-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
+  .batch-row:last-child { border-bottom: 0; }
+  .batch-row[data-current="1"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--ok); }
+  .batch-row .bn { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .batch-row .bm { font-size: 13px; color: var(--muted); }
+  .batch-badge { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--soft); color: var(--muted); }
+  .batch-badge[data-s="aktif"] { color: var(--ok); border-color: var(--ok); }
+  .batch-badge[data-s="selesai"] { color: var(--muted); }
+  .batch-badge[data-s="arsip"] { color: var(--soft); border-style: dashed; }
+  .batch-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .batch-actions .btn { padding: 5px 9px; font-size: 13px; }
+  .field select { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text); }
+  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border: 1px solid var(--line); }
+
+  .log:empty { display: none; }
+  .log .t { color: var(--soft); }
+  .log .err { color: var(--alert); }
+  .log .warn { color: var(--warn); }
+
+  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--gap); align-items: start; }
+
+  @media (max-width: 760px) {
+    :root { --pad: 16px; }
+    body { font-size: 16px; }
+    .topbar { padding: 10px var(--pad); flex-wrap: wrap; row-gap: 8px; }
+    .brand { flex: 1 1 100%; }
+    .topbar-right { flex: 1 1 100%; justify-content: flex-end; }
+    .icon-btn { width: 38px; height: 38px; }
+    .brand h1 { font-size: 17px; }
+    .brand .sub { font-size: 12.5px; }
+    .row .btn { flex: 1 1 auto; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="app" id="app" hidden>
+  <div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <rect x="0" y="10" width="3" height="8" fill="currentColor" opacity=".35" />
+        <rect x="5" y="5" width="3" height="13" fill="currentColor" opacity=".65" />
+        <rect x="10" y="1" width="3" height="17" fill="currentColor" />
+        <rect x="15" y="7" width="3" height="11" fill="currentColor" opacity=".45" />
+      </svg>
+      <div>
+        <h1>Admin</h1>
+        <p class="sub">Monev CKG · Puskesmas Baruharjo</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <button class="icon-btn" id="themeBtn" type="button" title="Ganti tema terang/gelap">
+        <svg class="i-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M15.5 12.4A6.2 6.2 0 0 1 7.6 4.5a6.2 6.2 0 1 0 7.9 7.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        </svg>
+        <svg class="i-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true" hidden>
+          <circle cx="10" cy="10" r="3.6" stroke="currentColor" stroke-width="1.6" />
+          <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+      <a class="nav-link" href="/">← Laporan</a>
+      <button class="nav-link" id="btnLogout" type="button" hidden>Keluar</button>
+    </div>
+  </header>
+
+  <section class="panel" id="statusPanel">
+    <div class="panel-head"><h2>Status sistem</h2><span class="caption" id="meta"></span></div>
+    <div class="status-grid">
+      <div class="status-cell"><span class="k">Sesi SSI</span><span class="v" id="stSession">memeriksa…</span><span class="s" id="stSessionSub"></span></div>
+      <div class="status-cell"><span class="k">Kunjungan tersimpan</span><span class="v" id="stVisits">—</span><span class="s" id="stSync"></span></div>
+      <div class="status-cell"><span class="k">Sinkronisasi terakhir</span><span class="v" id="stBatch">—</span><span class="s" id="stBatchSub"></span></div>
+    </div>
+    <div class="panel-body">
+      <div class="row">
+        <button class="btn" id="btnProbe" type="button">Cek sesi sekarang</button>
+        <button class="btn" id="btnRefresh" type="button">Perpanjang sesi</button>
+        <button class="btn" id="btnSync" type="button">Tarik data SSI</button>
+        <!-- Disembunyikan sementara: rincian layanan butuh ±11 menit untuk 1.285 kunjungan.
+             Endpoint /api/detail/fetch tetap ada; buka komentar tombol ini untuk mengaktifkan lagi. -->
+      </div>
+      <div class="row" style="align-items:flex-end;margin-top:14px">
+        <div class="field" style="flex:0 1 170px">
+          <label for="sweepStart">Tarik data mulai</label>
+          <input id="sweepStart" type="date" />
+        </div>
+        <div class="field" style="flex:0 1 170px">
+          <label for="sweepEnd">sampai</label>
+          <input id="sweepEnd" type="date" />
+        </div>
+        <button class="btn" id="btnSweepSave" type="button">Simpan rentang</button>
+        <span class="caption" id="sweepInfo">—</span>
+      </div>
+      <p>Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
+        Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
+      <p>Pemeriksaan sesi berjalan otomatis setiap halaman dibuka (sekali per menit). Tombol di atas untuk memaksa pemeriksaan saat Anda butuh.</p>
+    </div>
+    <div class="log" id="log" role="log" aria-live="polite"></div>
+  </section>
+
+  <section class="panel" id="batchPanel">
+    <div class="panel-head"><h2>Batch penugasan</h2><span class="caption">satu batch = satu periode</span></div>
+    <div class="panel-body">
+      <p>Laporan memakai <strong>batch aktif</strong>. Setiap impor menempel ke batch yang dipilih,
+        jadi impor susulan (mis. tambahan pasien pekan berikutnya) tidak membuat batch baru.</p>
+      <div class="batch-list" id="batchList"></div>
+      <details class="alt">
+        <summary>Buat batch baru</summary>
+        <div class="row" style="margin-top:10px;align-items:flex-end">
+          <div class="field" style="flex:1 1 240px"><label for="nbName">Nama batch</label><input id="nbName" placeholder="mis. September" /></div>
+          <div class="field" style="flex:0 1 120px"><label for="nbYear">Tahun</label><input id="nbYear" inputmode="numeric" maxlength="4" placeholder="2026" /></div>
+          <button class="btn primary" id="btnNewBatch" type="button">Buat</button>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="cols">
+    <section class="panel">
+      <div class="panel-head"><h2>Impor penugasan</h2></div>
+      <div class="panel-body">
+        <p><strong>Unggah ulang mengganti isi batch</strong>: baris yang tidak ada di file baru akan hilang,
+          dan tanda manual lama tetap dipertahankan untuk NIK + petugas yang sama.</p>
+        <p><strong>Kolom wajib:</strong> <code>Petugas</code>, <code>NIK</code> (16 digit), <code>Tahun</code>.
+          Kolom opsional: <code>Nama</code>, <code>Tanggal lahir</code>, <code>Tanggal target</code>,
+          dan <code>Keterangan</code>.</p>
+        <p><strong>Isi kolom <code>Keterangan</code></strong> (opsional): tulis alasan pasien gagal diinput —
+          <em>Data Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>. Kosongkan (atau tulis
+          <em>OK</em> / <em>sudah diinput</em> / <em>selesai</em>) untuk pasien yang berhasil, karena teks bebas
+          yang tidak dikenali akan dihitung sebagai <em>Gagal (lainnya)</em>. Kolom ini menimpa tanda yang ada;
+          tanda yang dibuat manual (supervisor / tanda massal) tetap dipertahankan saat impor ulang.</p>
+        <div class="field">
+          <label for="importBatch">Masukkan ke batch</label>
+          <select id="importBatch"></select>
+        </div>
+        <div class="row">
+          <input type="file" id="file" accept=".xlsx,.xls" class="sr" />
+          <label class="btn" for="file">Pilih Excel</label>
+          <span class="file-name" id="fileName">belum ada file</span>
+        </div>
+        <div class="row">
+          <button class="btn" id="btnAssignTemplate" type="button">Unduh template</button>
+          <button class="btn" id="btnInspect" type="button">Deteksi kolom</button>
+          <button class="btn primary" id="btnImport" type="button" disabled>Impor</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="bulkPanel">
+      <div class="panel-head"><h2>Tanda tidak valid (Excel)</h2></div>
+      <div class="panel-body">
+        <p><strong>Tandai banyak pasien sekaligus</strong> tanpa mengklik satu per satu. Unduh template,
+          isi kolom <code>NIK</code> dan <code>Alasan</code>, lalu unggah kembali.</p>
+        <p><strong>Pilihan alasan:</strong> <em>Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>.
+          <em>Data Hilang</em> untuk pasien yang diklaim sudah diinput tetapi tidak muncul di SSI saat ditarik.
+          Tanda hanya berlaku untuk pasien di batch aktif yang <em>belum</em> diinput; pasien yang sudah
+          diinput dilewati dan dilaporkan. Tanda lama pada NIK yang sama diganti oleh isi file.</p>
+        <div class="row">
+          <button class="btn" id="btnTemplate" type="button">Unduh template</button>
+          <input type="file" id="flagFile" accept=".xlsx,.xls" class="sr" />
+          <label class="btn" for="flagFile">Pilih Excel tanda</label>
+          <span class="file-name" id="flagFileName">belum ada file</span>
+        </div>
+        <div class="row">
+          <button class="btn primary" id="btnFlagImport" type="button" disabled>Terapkan tanda</button>
+        </div>
+        <div class="bulk-result" id="bulkResult" hidden></div>
+      </div>
+    </section>
+
+    <section class="panel" id="rulePanel">
+      <div class="panel-head"><h2>Dasar hitung</h2><span class="caption">kapan pasien dianggap sudah diinput</span></div>
+      <div class="panel-body">
+        <p>Aturan ini berlaku untuk <strong>batch terpilih</strong> di panel impor. Semua tahun pada batch itu
+          memakai aturan yang sama, jadi angka capaian antar-periode tetap sebanding.</p>
+        <div class="field">
+          <label for="matchRule">Pasien dianggap diinput bila</label>
+          <select id="matchRule"></select>
+          <p class="field-help" id="matchRuleHelp"></p>
+        </div>
+        <p class="caption" id="matchRuleNow">—</p>
+      </div>
+    </section>
+
+    <section class="panel" id="setorPanel">
+      <div class="panel-head"><h2>Setoran petugas</h2><span class="caption">sisa pasien → Data Hilang</span></div>
+      <div class="panel-body">
+        <p><strong>Satu klik per petugas:</strong> semua pasien yang masih <em>belum diinput</em>
+          ditandai <em>Data Hilang</em> (pegawai mengklaim sudah input, data tidak ada di SSI).
+          Baris yang sudah diinput atau sudah punya tanda lain tidak disentuh.</p>
+        <div class="field">
+          <label for="setorPetugas">Pilih petugas</label>
+          <select id="setorPetugas"></select>
+        </div>
+        <p class="caption" id="setorInfo">—</p>
+        <div class="row">
+          <button class="btn primary" id="btnSetor" type="button" disabled>Tandai sudah setor</button>
+          <button class="btn" id="btnSetorBatal" type="button" disabled>Batalkan setoran</button>
+        </div>
+        <details class="alt">
+          <summary>Petugas sudah setor semua? Lihat daftarnya</summary>
+          <div class="setor-list" id="setorList"></div>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Ekspor</h2></div>
+      <div class="panel-body">
+        <p>Rekap per petugas dan detail pasien, termasuk kolom sebab gagal dan catatan pegawai.</p>
+        <div class="row">
+          <a class="btn" href="/api/report.xlsx">Unduh Excel laporan</a>
+          <a class="btn" href="/api/report.pdf">Unduh PDF capaian petugas</a>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel" id="sesi">
+    <div class="panel-head"><h2>Masuk ke SSI</h2><span class="caption">diperlukan untuk menarik data</span></div>
+    <div class="panel-body">
+      <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:14px">
+        <div class="row">
+          <div class="field" style="flex:1 1 240px">
+            <label for="email">Email SSI</label>
+            <input id="email" type="email" autocomplete="username" spellcheck="false" />
+          </div>
+          <div class="field" style="flex:1 1 200px">
+            <label for="password">Kata sandi</label>
+            <input id="password" type="password" autocomplete="current-password" />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label for="code">Kode captcha</label>
+            <div class="captcha-row">
+              <button type="button" class="captcha-btn" id="captchaBtn" title="Klik untuk ganti gambar" aria-label="Ganti gambar captcha">
+                <img id="captcha" alt="Gambar captcha" />
+                <span class="captcha-msg" id="captchaMsg" hidden>Memuat…</span>
+              </button>
+              <input id="code" inputmode="numeric" maxlength="6" autocomplete="off" />
+            </div>
+          </div>
+          <button class="btn primary" id="btnLogin" type="submit">Masuk</button>
+        </div>
+      </form>
+      <p class="field-error" id="loginInfo" role="alert"></p>
+      <details class="alt">
+        <summary>Cara lain: tempel cookie dari browser</summary>
+        <div class="row" style="margin-top:10px">
+          <div class="field" style="flex:1 1 320px">
+            <label for="cookie" class="sr">Cookie sesi</label>
+            <input id="cookie" placeholder="token_eksternal=…; refresh_token=…" spellcheck="false" />
+          </div>
+          <button class="btn" id="btnSession" type="button">Sambungkan</button>
+        </div>
+      </details>
+    </div>
+  </section>
+  </div>
+  </div>
+
+<dialog class="gate" id="gate" aria-labelledby="gateTitle" aria-describedby="gateWhy">
+  <form id="gateForm" novalidate>
+    <div class="gate-body">
+      <p class="caption">Admin · Monev CKG</p>
+      <h2 id="gateTitle">Halaman ini terkunci</h2>
+      <p id="gateWhy">Masukkan sandi admin untuk mengubah penugasan, sesi, dan data SSI.
+        Laporan pasien di halaman depan tetap bisa dibaca tanpa sandi.</p>
+      <label class="sr" for="adminPassword">Sandi admin</label>
+      <input id="adminPassword" type="password" autocomplete="current-password" placeholder="Sandi admin" />
+      <p class="gate-error" id="gateError" role="alert"></p>
+      <button class="btn primary" id="gateBtn" type="submit">Buka</button>
+      <p class="gate-foot"><a href="/">Kembali ke laporan</a></p>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const fmt = (n) => new Intl.NumberFormat('id-ID').format(n ?? 0);
+const pctText = (n) => (n > 0 && n < 1 ? '<1' : String(n ?? 0).replace('.', ','));
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const clock = (iso) => (iso ? new Date(iso).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+
+function relTime(iso) {
+  if (!iso) return 'belum pernah';
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (m < 1) return 'baru saja';
+  if (m < 60) return m + ' menit lalu';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + ' jam lalu';
+  return Math.round(h / 24) + ' hari lalu';
+}
+
+function log(message, tone) {
+  const el = document.createElement('div');
+  const t = new Date().toLocaleTimeString('id-ID', { hour12: false });
+  el.className = tone ?? '';
+  el.innerHTML = '<span class="t">' + t + '</span>  ' + esc(message);
+  $('#log').appendChild(el);
+}
+
+// Dideklarasikan sebelum dipakai: `let` di blok berikutnya berada di zona mati (TDZ) saat
+// init memanggil loadPerPetugas(), sehingga penugasan diam-diam gagal.
+let perPetugas = [];
+// `let` di sini, bukan di blok fiturnya: init memanggil loadMatchRules() sebelum
+// deklarasi blok itu dieksekusi, dan let yang belum jalan melempar ReferenceError (TDZ).
+let matchRules = [];
+
+function busy(btn, on, label, doneLabel) {
+  if (!btn) return;
+  if (on) {
+    if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+    if (label) btn.textContent = label;
+    btn.disabled = true;
+    btn.setAttribute('aria-busy', 'true');
+  } else {
+    btn.textContent = doneLabel || btn.dataset.label || btn.textContent;
+    delete btn.dataset.label;
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+/* tema */
+function applyTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const dark = theme === 'dark';
+  // SVG punya atribut `hidden` sendiri, jadi .hidden/toggleAttribute tidak sinkron — pakai atribut.
+  const moon = $('#themeBtn').querySelector('.i-moon');
+  const sun = $('#themeBtn').querySelector('.i-sun');
+  if (dark) { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
+  else { moon.setAttribute('hidden', ''); sun.removeAttribute('hidden'); }
+  if (persist) { try { localStorage.setItem('monev-theme', theme); } catch (e) {} }
+}
+$('#themeBtn').addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+});
+applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light', false);
+
+/* status */
+/**
+ * Bila cookie admin kedaluwarsa, endpoint tulis menjawab 401 {locked:true}.
+ * Semua fetch lewat helper ini supaya gerbang muncul lagi tanpa kehilangan konteks.
+ */
+async function apiFetch(url, options) {
+  const res = await fetch(url, options);
+  if (res.status === 401) {
+    const body = await res.clone().json().catch(() => ({}));
+    if (body?.locked) {
+      unlocked = false;
+      showGate('Sesi admin berakhir. Masukkan sandi lagi.');
+      throw new Error(body.error ?? 'Halaman admin terkunci.');
+    }
+  }
+  return res;
+}
+
+/** Rentang tarik: ditampilkan dari /api/status (pengaturan DB menang atas env). */
+function renderSweep(s) {
+  if (s?.startDate) $('#sweepStart').value = s.startDate;
+  if (s?.endDate) $('#sweepEnd').value = s.endDate;
+  $('#sweepInfo').textContent = (s?.fromSetting ? 'tersimpan: ' : 'bawaan: ') +
+    (s?.startDate ?? '—') + ' s/d ' + (s?.endDate ?? '—');
+}
+
+$('#btnSweepSave').addEventListener('click', async () => {
+  const btn = $('#btnSweepSave');
+  busy(btn, true, 'Menyimpan…');
+  try {
+    const res = await apiFetch('/api/settings/sweep', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ startDate: $('#sweepStart').value, endDate: $('#sweepEnd').value }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    renderSweep(j);
+    log('rentang tarik disimpan: ' + j.startDate + ' s/d ' + j.endDate);
+  } catch (e) {
+    log('gagal menyimpan rentang: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+async function loadStatus() {
+  const s = await (await apiFetch('/api/status')).json();
+  $('#stVisits').textContent = fmt(s.visits);
+  $('#stSync').textContent = 'sinkron ' + relTime(s.lastSyncAt);
+  $('#stBatch').textContent = s.lastSyncStatus ? 'sinkron: ' + s.lastSyncStatus : 'belum sinkron';
+  $('#stBatchSub').textContent = s.lastSyncFetched ? fmt(s.lastSyncFetched) + ' baris terakhir' : '';
+  $('#meta').textContent = 'faskes ' + (s.faskesCode ?? '—');
+  renderSweep(s);
+  const need = !s.hasSession || Boolean(s.sessionError);
+  $('#stSession').textContent = need ? 'tidak aktif' : 'aktif';
+  $('#stSession').dataset.tone = need ? 'bad' : 'ok';
+  $('#stSessionSub').textContent = s.sessionError ?? (s.hasSession ? 'diperbarui ' + clock(s.sessionUpdatedAt) : 'belum ada sesi tersimpan');
+  return s;
+}
+
+async function probe(force) {
+  const btn = $('#btnProbe');
+  busy(btn, true, 'Memeriksa…');
+  try {
+    // record=1: pemaksaan manual boleh menandai sesi ditolak; pemeriksaan saat halaman dibuka tidak.
+    const res = await apiFetch('/api/session/probe' + (force ? '?force=1&record=1' : ''), { method: 'POST' });
+    const j = await res.json();
+    if (j.state === 'ok') {
+      $('#stSession').textContent = 'aktif';
+      $('#stSession').dataset.tone = 'ok';
+      $('#stSessionSub').textContent = 'diverifikasi ' + clock(j.checkedAt) + (j.cached ? ' (cache)' : '');
+      log('sesi diverifikasi aktif');
+    } else if (j.state === 'invalid') {
+      $('#stSession').textContent = 'ditolak SSI';
+      $('#stSession').dataset.tone = 'bad';
+      $('#stSessionSub').textContent = j.message;
+      log('sesi ditolak: ' + j.message, 'err');
+    } else if (j.state === 'none') {
+      $('#stSession').textContent = 'tidak ada sesi';
+      $('#stSession').dataset.tone = 'bad';
+      $('#stSessionSub').textContent = 'masuk lewat halaman laporan';
+    } else {
+      $('#stSession').textContent = 'belum terverifikasi';
+      $('#stSessionSub').textContent = 'pemeriksaan gagal: ' + j.message;
+      log('cek sesi gagal: ' + j.message, 'warn');
+    }
+    return j;
+  } catch (e) {
+    log('cek sesi gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false, null, 'Cek sesi sekarang');
+  }
+}
+
+$('#btnProbe').addEventListener('click', () => probe(true));
+
+$('#btnRefresh').addEventListener('click', async () => {
+  const btn = $('#btnRefresh');
+  busy(btn, true, 'Memperpanjang…');
+  try {
+    const res = await (await apiFetch('/api/session/refresh', { method: 'POST' })).json();
+    if (res.error) throw new Error(res.error);
+    log('sesi diperpanjang');
+    await loadStatus();
+    await probe(true);
+  } catch (e) {
+    log('perpanjang sesi gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+$('#btnSync').addEventListener('click', async () => {
+  const btn = $('#btnSync');
+  busy(btn, true, 'Menarik…');
+  log('mulai tarik data SSI');
+  try {
+    const res = await (await apiFetch('/api/sync', { method: 'POST' })).json();
+    if (res.error) throw new Error(res.error);
+    log('selesai: ' + fmt(res.fetched) + ' baris / ' + res.pages + ' halaman · +' + res.inserted + ' baru · ~' + res.updated + ' berubah');
+    await loadStatus();
+    busy(btn, false, null, 'Tarik ulang');
+  } catch (e) {
+    log('tarik data gagal: ' + e.message, 'err');
+    busy(btn, false, null, 'Coba lagi');
+  }
+});
+
+// Tombolnya sedang disembunyikan dari UI; blok ini tetap siap bila diaktifkan lagi.
+if ($('#btnDetail')) $('#btnDetail').addEventListener('click', async () => {
+  const btn = $('#btnDetail');
+  busy(btn, true, 'Mengambil…');
+  try {
+    const res = await (await apiFetch('/api/detail/fetch', { method: 'POST' })).json();
+    if (res.error) throw new Error(res.error);
+    log('rincian: ' + res.fetched + ' kunjungan diperiksa');
+  } catch (e) {
+    log('rincian gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+/* ---------- batch ---------- */
+let batches = [];
+let currentBatchId = null;
+
+/** Batch cukup nama + tahun: "September 2026". */
+function batchLabel(b) {
+  if (!b) return '';
+  const base = b.name || ('Batch ' + b.id);
+  const year = (b.period_start ?? '').slice(0, 4);
+  return year && !base.includes(year) ? base + ' ' + year : base;
+}
+
+async function loadBatches() {
+  try {
+    const j = await (await apiFetch('/api/batches')).json();
+    batches = j.batches ?? [];
+  } catch (e) {
+    log('gagal memuat batch: ' + e.message, 'err');
+    return;
+  }
+  const active = batches.filter((b) => b.status === 'aktif');
+  // Batch aktif terbaru dipakai sebagai acuan; impor menempel ke pilihan ini.
+  currentBatchId = currentBatchId && active.some((b) => b.id === currentBatchId)
+    ? currentBatchId
+    : (active[0]?.id ?? null);
+
+  $('#batchList').innerHTML = batches.length
+    ? batches.map((b) => {
+        const rows = Number(b.row_count ?? 0);
+        const imports = Number(b.import_count ?? 0);
+        const when = b.last_import_at ? 'impor ' + clock(b.last_import_at) : 'dibuat ' + clock(b.imported_at);
+        const actions = [
+          (b.status === 'aktif' && active.length > 1) ? '<button class="btn" type="button" data-batch-use="' + b.id + '">Pakai</button>' : '',
+          b.status !== 'selesai' ? '<button class="btn" type="button" data-batch-status="' + b.id + '" data-to="selesai">Selesaikan</button>' : '',
+          b.status !== 'arsip' ? '<button class="btn" type="button" data-batch-status="' + b.id + '" data-to="arsip">Arsipkan</button>' : '',
+          b.status !== 'aktif' ? '<button class="btn" type="button" data-batch-status="' + b.id + '" data-to="aktif">Aktifkan</button>' : '',
+          '<button class="btn" type="button" data-batch-del="' + b.id + '">Hapus</button>',
+        ].join('');
+        return '<div class="batch-row"' + (b.id === currentBatchId ? ' data-current="1"' : '') + '>' +
+          '<div class="bn">' + esc(batchLabel(b)) +
+            '<span class="batch-badge" data-s="' + esc(b.status) + '">' + esc(b.status) + '</span>' +
+            (b.id === currentBatchId && active.length > 1 ? '<span class="batch-badge" data-s="aktif">dipakai laporan</span>' : '') +
+          '</div>' +
+          '<div class="batch-actions">' + actions + '</div>' +
+          '<div class="bm">' + fmt(rows) + ' baris · ' + fmt(b.petugas_count ?? 0) + ' petugas · ' +
+            (imports > 1 ? fmt(imports) + ' impor · ' : '') + when + '</div>' +
+          '</div>';
+      }).join('')
+    : '<div class="batch-row"><div class="bm">Belum ada batch. Buat satu dulu, lalu impor Excel ke dalamnya.</div></div>';
+
+  const opts = active.map((b) => '<option value="' + b.id + '"' + (b.id === currentBatchId ? ' selected' : '') + '>' + esc(batchLabel(b)) + '</option>').join('');
+  $('#importBatch').innerHTML = opts || '<option value="">— belum ada batch aktif —</option>';
+  // Tanpa batch, form impor tetap terlihat: tombolnya dinonaktifkan, bukan mengosongkan daftar.
+  if (!batches.length) $('#btnImport').disabled = true;
+  $('#btnImport').disabled = !$('#file').files?.[0] || !currentBatchId;
+  // Template & unggah tanda mengikuti batch yang dipakai laporan.
+  if ($('#btnTemplate')) wireTemplateButton();
+  loadPerPetugas();
+  loadMatchRules();
+  if ($('#btnFlagImport')) setFlagFile($('#flagFile').files?.[0]);
+  return currentBatchId;
+}
+
+$('#batchList').addEventListener('click', async (event) => {
+  const use = event.target.closest('button[data-batch-use]');
+  if (use) {
+    currentBatchId = Number(use.dataset.batchUse);
+    await loadBatches();
+    log('batch acuan: ' + (batches.find((b) => b.id === currentBatchId)?.name ?? currentBatchId));
+    return;
+  }
+  const toggle = event.target.closest('button[data-batch-status]');
+  if (toggle) {
+    const id = Number(toggle.dataset.batchStatus);
+    try {
+      const res = await apiFetch('/api/batches/' + id, {
+        method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status: toggle.dataset.to }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error);
+      log('batch ' + id + ' → ' + toggle.dataset.to);
+      await loadBatches();
+    } catch (e) {
+      log('gagal mengubah batch: ' + e.message, 'err');
+    }
+    return;
+  }
+  const del = event.target.closest('button[data-batch-del]');
+  if (!del) return;
+  const id = Number(del.dataset.batchDel);
+  const b = batches.find((x) => x.id === id);
+  const rows = Number(b?.row_count ?? 0);
+  if (!confirm('Hapus batch "' + (b?.name ?? id) + '" beserta ' + fmt(rows) + ' baris penugasan? Tanda gagal pada baris itu ikut terhapus.')) return;
+  try {
+    const res = await apiFetch('/api/batches/' + id, { method: 'DELETE' });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    log('batch ' + id + ' dihapus');
+    if (currentBatchId === id) currentBatchId = null;
+    await loadBatches();
+  } catch (e) {
+    log('gagal menghapus batch: ' + e.message, 'err');
+  }
+});
+
+$('#btnNewBatch').addEventListener('click', async () => {
+  const name = $('#nbName').value.trim();
+  const year = $('#nbYear').value.trim();
+  if (!name) return log('nama batch kosong', 'err');
+  if (!/^\d{4}$/.test(year)) return log('tahun harus 4 digit, mis. 2026', 'err');
+  const btn = $('#btnNewBatch');
+  busy(btn, true, 'Membuat…');
+  try {
+    const res = await apiFetch('/api/batches', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, year }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    $('#nbName').value = '';
+    currentBatchId = j.id;
+    log('batch dibuat: ' + name + ' ' + year);
+    await loadBatches();
+  } catch (e) {
+    log('gagal membuat batch: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+$('#importBatch').addEventListener('change', () => { currentBatchId = Number($('#importBatch').value) || null; });
+
+/* impor */
+$('#file').addEventListener('change', () => {
+  const f = $('#file').files?.[0];
+  $('#fileName').textContent = f ? f.name : 'belum ada file';
+  $('#btnImport').disabled = !f || !currentBatchId;
+});
+
+/**
+ * File Excel (±150 KB ke atas) tidak boleh diubah dengan `String.fromCharCode(...bytes)`:
+ * menyebarkan ratusan ribu argumen melampaui stack dan berakhir
+ * "Maximum call stack size exceeded". Baca per potongan 32 KB.
+ */
+function bytesToBase64(bytes) {
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
+}
+
+async function filePayload() {
+  const f = $('#file').files?.[0];
+  if (!f) throw new Error('Pilih file Excel dulu');
+  if (!currentBatchId) throw new Error('Buat atau pilih batch dulu');
+  const buf = new Uint8Array(await f.arrayBuffer());
+  return {
+    filename: f.name,
+    base64: bytesToBase64(buf),
+    size: buf.length,
+    batchId: currentBatchId,
+  };
+}
+
+$('#btnInspect').addEventListener('click', async () => {
+  const btn = $('#btnInspect');
+  busy(btn, true, 'Membaca…');
+  try {
+    const body = await filePayload();
+    const res = await apiFetch('/api/assign/inspect', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    const cols = Object.entries(j.mapping).filter(([k, v]) => v && k !== 'sheet' && k !== 'headerRow').map(([k, v]) => k + '="' + v + '"');
+    log('kolom terdeteksi: ' + cols.join(', '));
+  } catch (e) {
+    log('deteksi kolom gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+$('#btnImport').addEventListener('click', async () => {
+  const btn = $('#btnImport');
+  busy(btn, true, 'Mengimpor…');
+  try {
+    const body = await filePayload();
+    const res = await apiFetch('/api/assign/import', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    log('impor batch ' + j.batchId + (j.replaced ? ' (mengganti isi sebelumnya)' : '') +
+      ' · ' + (body.size / 1024).toFixed(0) + ' KB: ' + fmt(j.imported) + ' baris' + (j.skipped ? ', ' + j.skipped + ' dilewati' : '') +
+      ' · kolom tanda: ' + (j.statusColumn ? '"' + j.statusColumn + '"' : 'tidak ada') +
+      (j.flagged ? ' · ' + j.flagged + ' baris bertanda gagal' : ''));
+    if (j.unrecognized) log(j.unrecognized + ' tanda tidak dikenali teksnya, disimpan sebagai "Lainnya" + catatan asli', 'warn');
+    if (j.duplicates?.length) {
+      log(j.duplicates.length + ' baris ganda (NIK + petugas sama) digabung; baris ke-' + j.duplicates.map((d) => d.rowNo).slice(0, 8).join(', '), 'warn');
+    }
+    if (j.carriedFlags) log(j.carriedFlags + ' tanda manual lama dipertahankan karena NIK + petugas masih sama');
+    if (j.droppedExcelFlags) {
+      log(j.droppedExcelFlags + ' tanda dari kolom "Keterangan" file lama tidak ada di file baru, jadi ikut hilang', 'warn');
+    }
+    if (j.setoranDireset?.length) {
+      log('setoran dicabut karena file baru menambah pasien: ' + j.setoranDireset.join(', ') + ' (tandai setor lagi bila sudah disetor)', 'warn');
+    }
+    await loadStatus();
+  } catch (e) {
+    log('impor gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+/* ---------- tanda tidak valid lewat Excel ---------- */
+function setFlagFile(f) {
+  $('#flagFileName').textContent = f ? f.name : 'belum ada file';
+  $('#btnFlagImport').disabled = !f || !currentBatchId;
+}
+
+/**
+ * Unduhan lewat fetch + blob, bukan <a href="/api/...">: tautan biasa menyimpan apa pun yang
+ * dibalas server — saat endpoint galat, browser menyimpan halaman galat sebagai "file xlsx".
+ * Tombol ini juga tidak pernah menjadi <a href="#">, sehingga tidak ada tautan yang
+ * mengunduh halaman admin itu sendiri.
+ */
+function wireTemplateButton() {
+  const btn = $('#btnTemplate');
+  if (btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', downloadTemplate);
+}
+
+$('#flagFile').addEventListener('change', () => setFlagFile($('#flagFile').files?.[0]));
+
+$('#btnFlagImport').addEventListener('click', async () => {
+  const btn = $('#btnFlagImport');
+  const f = $('#flagFile').files?.[0];
+  if (!f) return;
+  if (!currentBatchId) { log('pilih batch aktif dulu', 'err'); return; }
+  busy(btn, true, 'Menerapkan…');
+  const box = $('#bulkResult');
+  try {
+    const buf = new Uint8Array(await f.arrayBuffer());
+    const res = await apiFetch('/api/flags/import', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ filename: f.name, base64: bytesToBase64(buf), batchId: currentBatchId }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+
+    const reasons = (j.byReason ?? []).map((r) => '<span>' + esc(r.label) + '<b>' + fmt(r.count) + '</b></span>').join('');
+    const listOf = (items, fmtItem) => items.length
+      ? '<ul>' + items.map(fmtItem).join('') + '</ul>'
+      : '';
+    box.innerHTML =
+      '<div class="bs">' +
+        '<span>Dibaca<b>' + fmt(j.read) + '</b></span>' +
+        '<span>Ditandai<b>' + fmt(j.flagged) + '</b></span>' +
+        reasons +
+      '</div>' +
+      (j.duplicates ? '<p class="caption">' + fmt(j.duplicates) + ' NIK ganda di file; baris terakhir yang dipakai.</p>' : '') +
+      (j.notInBatchCount
+        ? '<h4>Tidak ada di batch aktif (' + fmt(j.notInBatchCount) + ')</h4>' + listOf(j.notInBatch, (r) => '<li>' + esc(r.nik) + ' — ' + esc(r.reason) + '</li>')
+        : '') +
+      (j.alreadyDoneCount
+        ? '<h4>Sudah diinput, dilewati (' + fmt(j.alreadyDoneCount) + ')</h4>' + listOf(j.alreadyDone, (r) => '<li>' + esc(r.nik) + ' — ' + esc(r.name ?? '-') + ' (' + esc(r.petugas) + ')</li>')
+        : '') +
+      (j.skippedCount
+        ? '<h4>Baris rusak (' + fmt(j.skippedCount) + ')</h4>' + listOf(j.skipped, (r) => '<li>baris ' + fmt(r.rowNo) + ': ' + esc(r.reason) + '</li>')
+        : '');
+    box.hidden = false;
+
+    log('tanda dari Excel: ' + fmt(j.flagged) + ' baris ditandai pada batch ' + esc(j.batchName) +
+      (j.notInBatchCount ? ' · ' + fmt(j.notInBatchCount) + ' NIK tidak ada di batch' : '') +
+      (j.alreadyDoneCount ? ' · ' + fmt(j.alreadyDoneCount) + ' dilewati karena sudah diinput' : '') +
+      (j.skippedCount ? ' · ' + fmt(j.skippedCount) + ' baris rusak' : ''), j.skippedCount || j.notInBatchCount ? 'warn' : 'ok');
+  } catch (e) {
+    box.hidden = true;
+    log('tanda dari Excel gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+async function downloadTemplate(event) {
+  event.preventDefault();
+  event.stopPropagation();
+  const btn = $('#btnTemplate');
+  busy(btn, true, 'Menyiapkan…');
+  try {
+    const url = '/api/flags/template' + (currentBatchId ? '?batch=' + encodeURIComponent(currentBatchId) : '');
+    const res = await apiFetch(url);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || ('HTTP ' + res.status));
+    }
+    const blob = await res.blob();
+    const name = /filename="?([^";]+)"?/i.exec(res.headers.get('content-disposition') || '')?.[1]
+      || 'template-tanda-tidak-valid.xlsx';
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    log('template diunduh: ' + name + ' (' + Math.round(blob.size / 1024) + ' KB)');
+  } catch (e) {
+    log('gagal mengunduh template: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+}
+
+/* ---------- template penugasan ---------- */
+async function downloadAssignTemplate() {
+  const btn = $('#btnAssignTemplate');
+  busy(btn, true, 'Menyiapkan…');
+  try {
+    const url = '/api/assign/template' + (currentBatchId ? '?batch=' + encodeURIComponent(currentBatchId) : '');
+    const res = await apiFetch(url);
+    if (!res.ok) {
+      const j = await res.json().catch(() => ({}));
+      throw new Error(j.error || ('HTTP ' + res.status));
+    }
+    const blob = await res.blob();
+    const name = /filename="?([^";]+)"?/i.exec(res.headers.get('content-disposition') || '')?.[1] || 'template-penugasan.xlsx';
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+    log('template penugasan diunduh: ' + name + ' (' + Math.round(blob.size / 1024) + ' KB)');
+  } catch (e) {
+    log('gagal mengunduh template penugasan: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+}
+
+$('#btnAssignTemplate').addEventListener('click', downloadAssignTemplate);
+
+/* ---------- dasar hitung ---------- */
+async function loadMatchRules() {
+  try {
+    const res = await apiFetch('/api/match-rules');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    matchRules = j.rules ?? [];
+    const cur = (j.batches ?? []).find((b) => b.id === currentBatchId)?.matchRule ?? 'selesai';
+    $('#matchRule').innerHTML = matchRules.map((r) =>
+      '<option value="' + esc(r.code) + '"' + (r.code === cur ? ' selected' : '') + '>' + esc(r.label) + '</option>').join('');
+    showMatchRuleHelp();
+  } catch (e) {
+    log('gagal memuat aturan: ' + e.message, 'err');
+  }
+}
+
+function showMatchRuleHelp() {
+  const r = matchRules.find((x) => x.code === $('#matchRule').value);
+  $('#matchRuleHelp').textContent = r ? r.help : '';
+  const aktif = matchRules.find((x) => x.code === $('#matchRule').value);
+  $('#matchRuleNow').textContent = aktif
+    ? 'Dipakai sekarang: ' + aktif.label + '. Mengubah aturan langsung mengubah angka di laporan, tanpa impor ulang.'
+    : '';
+}
+
+$('#matchRule').addEventListener('change', async () => {
+  showMatchRuleHelp();
+  const rule = $('#matchRule').value;
+  if (!currentBatchId) { log('pilih batch dulu', 'err'); return; }
+  try {
+    const res = await apiFetch('/api/batches/' + currentBatchId, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ matchRule: rule }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    const label = matchRules.find((x) => x.code === rule)?.label ?? rule;
+    log('dasar hitung batch ' + currentBatchId + ' → ' + label);
+    await loadPerPetugas();
+  } catch (e) {
+    log('gagal menyimpan aturan: ' + e.message, 'err');
+  }
+});
+
+/* ---------- setoran petugas ---------- */
+
+async function loadPerPetugas() {
+  try {
+    const res = await apiFetch('/api/report?rows=0');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const j = await res.json();
+    perPetugas = j.perPetugas ?? [];
+    renderSetor();
+  } catch (e) {
+    log('gagal memuat capaian: ' + e.message, 'err');
+  }
+}
+
+function selectedPetugas() {
+  const p = perPetugas.find((x) => x.petugas === $('#setorPetugas').value);
+  return p ?? null;
+}
+
+function renderSetor() {
+  if (!perPetugas.length) return;
+  const prev = $('#setorPetugas').value;
+  const sorted = [...perPetugas].sort((a, b) => b.perluTindakan - a.perluTindakan || a.petugas.localeCompare(b.petugas));
+  $('#setorPetugas').innerHTML = sorted.map((p) =>
+    '<option value="' + esc(p.petugas) + '"' + (p.petugas === prev ? ' selected' : '') + '>' +
+      esc(p.petugas) + ' — ' + fmt(p.selesai) + '/' + fmt(p.assigned) + ' (' + pctText(p.pctCapaian) + '%)' +
+      (p.perluTindakan ? ', sisa ' + fmt(p.perluTindakan) : '') +
+      (p.submitted ? ' · sudah setor' : '') +
+    '</option>').join('');
+
+  const p = selectedPetugas();
+  if (!p) {
+    $('#setorInfo').textContent = 'Belum ada petugas pada batch aktif.';
+    $('#btnSetor').disabled = true;
+    $('#btnSetorBatal').disabled = true;
+  } else {
+    $('#setorInfo').textContent = p.perluTindakan
+      ? fmt(p.perluTindakan) + ' pasien belum diinput akan ditandai Data Hilang; capaian naik dari ' +
+        pctText(p.pctCapaian) + '% menjadi ' + pctText(Math.round(((p.selesai + p.perluTindakan) / (p.assigned || 1)) * 1000) / 10) + '%.'
+      : 'Tidak ada pasien tersisa: semua sudah diinput atau bertanda.';
+    $('#btnSetor').disabled = false;
+    $('#btnSetor').textContent = p.submitted ? 'Perbarui setoran' : 'Tandai sudah setor';
+    $('#btnSetorBatal').disabled = !p.submitted;
+  }
+
+  const done = perPetugas.filter((x) => x.submitted);
+  $('#setorList').innerHTML = done.length
+    ? done.map((x) => '<div class="sr-row"><span><b>' + esc(x.petugas) + '</b> — ' + pctText(x.pctCapaian) + '%</span>' +
+        '<span>' + clock(x.submittedAt) + (x.includesGagal ? '' : ' · tanpa hitung gagal') + '</span></div>').join('')
+    : '<div class="sr-row">Belum ada setoran.</div>';
+}
+
+$('#setorPetugas').addEventListener('change', renderSetor);
+
+$('#btnSetor').addEventListener('click', async () => {
+  const p = selectedPetugas();
+  if (!p) return;
+  if (p.perluTindakan) {
+    const ok = confirm('Tandai ' + p.petugas + ' sudah setor?\n\n' + fmt(p.perluTindakan) +
+      ' pasien yang belum diinput akan ditandai "Data Hilang".', null);
+    if (!ok) return;
+  }
+  const btn = $('#btnSetor');
+  busy(btn, true, 'Menyimpan…');
+  try {
+    const res = await apiFetch('/api/petugas/setor', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ petugas: p.petugas, batchId: currentBatchId }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    log('setor ' + p.petugas + ': ' + fmt(j.ditandaiHilang) + ' pasien ditandai Data Hilang · capaian ' + pctText(j.capaian) + '%');
+    await loadPerPetugas();
+  } catch (e) {
+    log('gagal menandai setor: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+    renderSetor();
+  }
+});
+
+$('#btnSetorBatal').addEventListener('click', async () => {
+  const p = selectedPetugas();
+  if (!p) return;
+  if (!confirm('Batalkan setoran ' + p.petugas + '? Tanda Data Hilang dari setoran ini dihapus; tanda lain tetap.')) return;
+  const btn = $('#btnSetorBatal');
+  busy(btn, true, 'Membatalkan…');
+  try {
+    const res = await apiFetch('/api/petugas/setor', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ petugas: p.petugas, batchId: currentBatchId, batal: true }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    log('setoran ' + p.petugas + ' dibatalkan: ' + fmt(j.direset) + ' baris kembali belum diinput');
+    await loadPerPetugas();
+  } catch (e) {
+    log('gagal membatalkan setoran: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+    renderSetor();
+  }
+});
+
+/* login */
+let captchaId = null;
+
+async function loadCaptcha() {
+  const img = $('#captcha'), msg = $('#captchaMsg'), btn = $('#captchaBtn');
+  captchaId = null;
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  img.hidden = true;
+  img.removeAttribute('src');
+  msg.textContent = 'Memuat captcha…';
+  msg.hidden = false;
+  try {
+    const r = await apiFetch('/api/session/captcha');
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+    captchaId = j.id;
+    img.src = j.image;
+    img.hidden = false;
+    msg.hidden = true;
+    $('#code').value = '';
+  } catch (e) {
+    msg.textContent = 'Gagal dimuat. Klik untuk coba lagi.';
+    log('captcha gagal dimuat: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+}
+
+$('#captchaBtn').addEventListener('click', loadCaptcha);
+
+$('#loginForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const email = $('#email').value.trim();
+  const password = $('#password').value;
+  const code = $('#code').value.trim();
+  if (!email || !password || !code) {
+    $('#loginInfo').textContent = 'Lengkapi email, kata sandi, dan kode captcha.';
+    return;
+  }
+  const btn = $('#btnLogin');
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  $('#loginInfo').textContent = '';
+  try {
+    const r = await apiFetch('/api/session/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password, code, captchaId }),
+    });
+    const j = await r.json();
+    if (!r.ok) {
+      $('#loginInfo').textContent = j.error;
+      log('login gagal: ' + j.error, 'err');
+      $('#password').value = '';
+      await loadCaptcha();
+      return;
+    }
+    $('#password').value = '';
+    log('login berhasil, sesi tersimpan');
+    await loadStatus();
+    await probe(true);
+  } catch (e) {
+    $('#loginInfo').textContent = 'Tidak bisa menghubungi server.';
+    log('login gagal: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+});
+
+/* cookie */
+$('#btnSession').addEventListener('click', async () => {
+  const cookie = $('#cookie').value.trim();
+  if (!cookie) return log('cookie kosong', 'err');
+  const btn = $('#btnSession');
+  busy(btn, true, 'Menyambung…');
+  try {
+    const res = await apiFetch('/api/session', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ cookie }) });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    $('#cookie').value = '';
+    log('cookie tersambung dan diverifikasi');
+    await loadStatus();
+    await probe(true);
+  } catch (e) {
+    log('cookie gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+/* ---------- gerbang sandi ---------- */
+let unlocked = false;
+
+function showGate(message) {
+  const gate = $('#gate');
+  if (message) $('#gateError').textContent = message;
+  if (!gate.open) gate.showModal();
+  $('#adminPassword').focus();
+}
+
+async function checkGate() {
+  try {
+    const j = await (await fetch('/api/admin')).json();
+    if (!j.needPassword || j.unlocked) {
+      unlocked = true;
+      $('#gate').close();
+      $('#app').hidden = false;
+      $('#btnLogout').hidden = !j.needPassword;
+      return true;
+    }
+    showGate('');
+    return false;
+  } catch (e) {
+    showGate('Tidak bisa menghubungi server: ' + e.message);
+    return false;
+  }
+}
+
+$('#gateForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const password = $('#adminPassword').value;
+  if (!password) return;
+  const btn = $('#gateBtn');
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  $('#gateError').textContent = '';
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ password }),
+    });
+    const j = await res.json();
+    if (!res.ok) {
+      $('#gateError').textContent = j.error ?? 'Sandi salah.';
+      $('#adminPassword').value = '';
+      $('#adminPassword').focus();
+      return;
+    }
+    $('#adminPassword').value = '';
+    await checkGate();
+    if (unlocked) {
+      $('#app').hidden = false;
+      log('admin dibuka');
+      await loadStatus();
+      await probe(false);
+    }
+  } catch (e) {
+    $('#gateError').textContent = 'Tidak bisa menghubungi server.';
+  } finally {
+    btn.disabled = false;
+    btn.removeAttribute('aria-busy');
+  }
+});
+
+// Esc tidak boleh menutup gerbang: satu-satunya jalan adalah sandi atau kembali ke laporan.
+$('#gate').addEventListener('cancel', (event) => event.preventDefault());
+
+$('#btnLogout').addEventListener('click', async () => {
+  await fetch('/api/admin/logout', { method: 'POST' });
+  location.href = '/';
+});
+
+/* init: gerbang dulu, baru muat data */
+(async function init() {
+  const ok = await checkGate();
+  if (!ok) return;
+  // Dimuat terpisah: kegagalan satu bagian (mis. sesi SSI) tidak boleh mengosongkan
+  // daftar batch atau daftar petugas.
+  try {
+    await loadBatches();
+  } catch (e) {
+    log('gagal memuat batch: ' + e.message, 'err');
+  }
+  loadPerPetugas();
+  try {
+    await loadStatus();
+    await probe(false);
+    if (location.hash === '#sesi') loadCaptcha();
+  } catch (e) {
+    log('gagal memuat status: ' + e.message, 'err');
+  }
+})();
+</script>
+</body>
+</html>

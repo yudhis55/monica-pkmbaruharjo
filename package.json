@@ -1,0 +1,31 @@
+{
+  "name": "monev-ckg",
+  "version": "1.0.0",
+  "description": "Monev CKG Puskesmas Baruharjo",
+  "scripts": {
+    "test": "node --test --experimental-strip-types \"test/*.test.ts\"",
+    "typecheck": "tsc --noEmit",
+    "dev": "tsx src/cli.ts",
+    "serve": "tsx src/cli.ts serve",
+    "start": "node src/cli.ts serve",
+    "db:check": "node scripts/check-db.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "fastify": "^5.12.8",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=24"
+  }
+}

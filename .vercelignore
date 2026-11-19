@@ -1,0 +1,8 @@
+data/
+.shot/
+test/
+.probe*
+.tmp*
+.serve.log
+*.log
+.env

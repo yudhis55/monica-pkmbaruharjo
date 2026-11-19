@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light dark" />
+<title>Monev CKG Puskesmas Baruharjo — Capaian Input Cek Kesehatan Gratis</title>
+<meta name="description" content="Monev capaian input Cek Kesehatan Gratis (CKG) Puskesmas Baruharjo: rekap per petugas, status pasien sudah atau belum diinput, dan unduhan laporan PDF/Excel." />
+<meta name="robots" content="index,follow" />
+<meta name="theme-color" content="#0f6b5e" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="/favicon.svg" />
+<!-- Pratinjau tautan saat dibagikan (WhatsApp/SMS antar petugas). -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Monev CKG — Puskesmas Baruharjo" />
+<meta property="og:locale" content="id_ID" />
+<meta property="og:title" content="Monev CKG Puskesmas Baruharjo" />
+<meta property="og:description" content="Capaian entry CKG per petugas: sudah diinput, belum diinput, dan gagal input." />
+<meta name="twitter:card" content="summary" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Monev CKG Puskesmas Baruharjo",
+  "description": "Monitoring capaian input hasil Cek Kesehatan Gratis (CKG) per petugas di Puskesmas Baruharjo.",
+  "applicationCategory": "HealthApplication",
+  "operatingSystem": "Web",
+  "inLanguage": "id-ID",
+  "isAccessibleForFree": true
+}
+</script>
+<script>
+  // Tema dipilih manual (bukan prefers-color-scheme) supaya hasilnya sama di semua komputer puskesmas.
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('monev-theme'); } catch (e) {}
+    var theme = saved === 'dark' || saved === 'light' ? saved : 'light';
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  })();
+</script>
+<style>
+  /* ---------- fonts (lokal: tanpa CDN, aman untuk jaringan puskesmas) ---------- */
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+  @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+  @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+
+  /* ---------- tokens ----------
+     terang : paper putih, hairline monokrom, kotak 48px
+     gelap  : ground hitam, aksen teal */
+  :root {
+    --paper: #ffffff;
+    --paper-2: #fafafa;
+    --bg: #ffffff;
+    --panel: #ffffff;
+    --panel-2: #fafafa;
+    --text: #0a0a0a;
+    --muted: #55554f;
+    --soft: #77776f;
+    --line: #e6e6e6;
+    --line-soft: #f0f0f0;
+    --tick: #dcdcdc;
+    --grid: #f0f0f0;
+    --ok: #0f6b5e;
+    --alert: #b01a1a;
+    --alert-bg: #fdf2f2;
+    --warn: #8a5300;
+    --btn: #0a0a0a;
+    --btn-text: #ffffff;
+    --btn-hover: #262626;
+    --focus: #0a0a0a;
+    --r: 0px;
+    --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    --gap: 14px;
+    --pad: 22px;
+  }
+  html[data-theme="dark"] {
+    --paper: #08090a;
+    --paper-2: #101112;
+    --bg: #08090a;
+    --panel: #101112;
+    --panel-2: #0c0d0e;
+    --text: #ecece8;
+    --muted: #b4b4af;
+    --soft: #8f8f89;
+    --line: #26272c;
+    --line-soft: #1a1b1e;
+    --tick: #55565b;
+    --grid: #161719;
+    --ok: #3fdec9;
+    --alert: #fb4b5b;
+    --alert-bg: #1e0d10;
+    --warn: #e3b341;
+    --btn: #3fdec9;
+    --btn-text: #06201c;
+    --btn-hover: #6ae8d7;
+    --focus: #3fdec9;
+  }
+
+  /* ---------- base: ukuran untuk dibaca orang tua ---------- */
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; color: var(--text);
+    font: 400 15.5px/1.5 var(--sans);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 48px 48px, 48px 48px;
+  }
+  h1, h2, h3, p, figure { margin: 0; }
+  button { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+  .mono { font-family: var(--mono); font-size: 14px; letter-spacing: .01em; }
+  .faint { color: var(--soft); }
+  .muted { color: var(--muted); }
+  .r { text-align: right; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap); }
+
+  /* ---------- topbar ---------- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 14px var(--pad); background: var(--panel);
+    border: 1px solid var(--line); border-bottom-style: dashed; border-radius: var(--r);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .brand svg { flex: none; color: var(--text); }
+  .brand h1 { font-size: 17px; font-weight: 600; letter-spacing: -.015em; }
+  .brand .sub { font-size: 13px; color: var(--muted); }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  /* Waktu sinkron: info global, jadi diletakkan di header dan tetap terlihat di layar sempit. */
+  .sync-note {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .04em; color: var(--muted);
+    white-space: nowrap; text-transform: uppercase;
+  }
+  .sync-note b { color: var(--text); font-weight: 500; }
+  .meta { font-size: 13px; color: var(--muted); text-align: right; line-height: 1.4; }
+  .meta b { color: var(--text); font-weight: 600; }
+
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none;
+    border: 1px solid var(--line); border-radius: var(--r); background: transparent; cursor: pointer; color: var(--muted);
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--soft); }
+  .icon-btn svg { width: 20px; height: 20px; display: block; }
+  #themeBtn svg[hidden] { display: none; }
+  .icon-btn[data-state="warn"] { color: var(--alert); border-color: var(--alert); }
+
+  .nav-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 15px; text-decoration: none; color: var(--muted);
+    padding: 9px 12px; border: 1px solid var(--line); border-radius: var(--r);
+  }
+  .nav-link:hover { color: var(--text); border-color: var(--soft); }
+
+  /* ---------- tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 16px 18px; min-width: 0; display: flex; flex-direction: column; }
+  .tile-label {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft);
+  }
+  .tile-label .n { color: var(--soft); }
+
+  .tile--lead { grid-column: span 12; }
+  .lead-figure { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+  .lead-figure .big { font-size: 48px; line-height: 1; font-weight: 600; letter-spacing: -.035em; }
+  .lead-figure .of { font-size: 16px; color: var(--muted); }
+  .lead-figure .of b { color: var(--text); font-weight: 600; }
+  .lead-sub { font-size: 15px; color: var(--muted); margin-top: 8px; max-width: 70ch; }
+  .lead-sub b { color: var(--text); font-weight: 600; }
+  .lead-bar { display: flex; height: 8px; margin-top: 12px; background: var(--line-soft); overflow: hidden; }
+  .lead-bar i { display: block; height: 100%; }
+  .lead-bar .a { background: var(--ok); }
+  .lead-bar .g { background: var(--warn); }
+  .lead-bar .b { background: var(--alert); }
+  .lead-key { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .lead-key span { display: inline-flex; align-items: center; gap: 6px; }
+  .lead-key i { width: 10px; height: 10px; display: block; }
+  .lead-key .k-a { background: var(--ok); }
+  .lead-key .k-g { background: var(--warn); }
+  .lead-key .k-b { background: var(--alert); }
+
+
+  .pair-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+  .pair-row:last-of-type { border-bottom: 0; }
+  .pair-row .k { font-size: 15px; }
+  .pair-row .v { font-size: 26px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .pair-row .v small { font-size: 13px; font-weight: 400; color: var(--muted); letter-spacing: 0; margin-left: 6px; }
+  .pair-row[data-tone="ok"] .v { color: var(--ok); }
+  .pair-row[data-tone="bad"] .v { color: var(--alert); }
+  .pair-foot { margin-top: 8px; font-size: 13px; color: var(--muted); }
+  .pair-foot b { color: var(--text); font-weight: 600; }
+
+  /* ---------- panel + tabel ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .panel-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px var(--pad); border-bottom: 1px solid var(--line); }
+  .panel-head h2 { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .panel-head .caption { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .spacer { flex: 1 1 auto; }
+  .table-wrap { overflow: auto; max-height: 560px; }
+  table { width: 100%; border-collapse: collapse; }
+  caption { text-align: left; }
+  th {
+    position: sticky; top: 0; z-index: 1; text-align: left; vertical-align: bottom;
+    padding: 9px 12px; background: var(--panel); border-bottom: 1px solid var(--line);
+    font-family: var(--mono); font-size: 11px; font-weight: 400; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); white-space: nowrap;
+  }
+  th.r { text-align: right; }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: middle; font-size: 15.5px; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .cell-name { font-weight: 500; font-size: 16px; }
+  .name-src {
+    margin-left: 6px; font-family: var(--mono); font-size: 9.5px; letter-spacing: .06em;
+    color: var(--soft); border: 1px solid var(--line); padding: 0 4px; vertical-align: 1px;
+  }
+  #detail .cell-name { white-space: normal; overflow: visible; text-overflow: clip; max-width: none; }
+  .cell-empty { padding: 24px 16px; color: var(--muted); font-size: 15px; }
+  .cell-empty b { color: var(--text); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; }
+  th.num { text-align: center; }
+  td.num { text-align: center; }
+  th.r, td.r { text-align: right; }
+  .tbl-patients.no-admin .col-act { display: none; }
+  .tbl-petugas { table-layout: auto; }
+  .tbl-petugas th:nth-child(1), .tbl-petugas td:nth-child(1) { width: 30%; }
+  .tbl-petugas th:nth-child(2), .tbl-petugas td:nth-child(2) { width: 14%; }
+  .tbl-petugas th:nth-child(3), .tbl-petugas td:nth-child(3) { width: 14%; }
+  .tbl-petugas th:nth-child(4), .tbl-petugas td:nth-child(4) { width: 16%; }
+  .tbl-petugas th:nth-child(5), .tbl-petugas td:nth-child(5) { width: 26%; }
+
+  .meter { display: inline-flex; align-items: center; gap: 12px; justify-content: flex-end; }
+  .meter { justify-content: flex-end; gap: 14px; }
+  .meter .track { width: 140px; height: 10px; background: var(--line-soft); border: 1px solid var(--line); overflow: hidden; }
+  .meter .fill { display: block; height: 100%; background: var(--ok); }
+  .meter .val { min-width: 56px; text-align: right; font-weight: 600; font-size: 14.5px; }
+
+  .verdict { display: inline-flex; align-items: center; gap: 7px; font-weight: 500; white-space: nowrap; }
+  .verdict .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--soft); }
+  .verdict[data-v="diinput"] { color: var(--ok); }
+  .verdict[data-v="diinput"] .dot { background: var(--ok); }
+  .verdict[data-v="belum"] { color: var(--alert); }
+  .verdict[data-v="belum"] .dot { background: var(--alert); }
+  .verdict[data-v="invalid"] { color: var(--warn); }
+  .verdict[data-v="invalid"] .dot { background: var(--warn); }
+  .verdict[data-v="lain"] { color: var(--muted); }
+  .verdict[data-v="lain"] .dot { background: transparent; border: 2px solid var(--soft); }
+  .verdict[data-v="hilang"] { color: var(--alert); }
+  .verdict[data-v="hilang"] .dot { background: var(--alert); }
+
+  .reason { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .reason .tag {
+    font-family: var(--mono); font-size: 11.5px; padding: 2px 7px;
+    border: 1px solid var(--soft); border-radius: var(--r); color: var(--muted);
+  }
+  .reason .tag[data-src="excel"] { border-style: dashed; }
+  .reason .note { color: var(--muted); font-size: 13.5px; }
+  /* kolom sebab sempit: teks pendek, sisanya dipotong dengan elipsis */
+  #detail td .muted, #detail td .reason .note { display: block; overflow: hidden; text-overflow: ellipsis; }
+  #detail td .reason { min-width: 0; }
+  #detail td .verdict { max-width: 100%; }
+  .v-short { display: none; }
+  .v-long { display: inline; }
+
+  /* filter + cari */
+  .filters { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+  .filters button { font-size: 14px; padding: 7px 12px; border: 0; cursor: pointer; background: transparent; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+  .filters button + button { border-left: 1px solid var(--line); }
+  .filters button[aria-pressed="true"] { color: var(--text); font-weight: 600; box-shadow: inset 0 -3px 0 var(--text); }
+  .filters .c { font-family: var(--mono); font-size: 11.5px; color: var(--soft); }
+  .search input {
+    font: inherit; font-size: 14px; width: 230px; padding: 8px 11px;
+    border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+  .search input::placeholder { color: var(--soft); }
+
+  .footer-note { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .year-pick select {
+    font: inherit; font-size: 13px; font-family: var(--mono); letter-spacing: .02em;
+    padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r);
+    background: var(--panel); color: var(--text); cursor: pointer;
+  }
+  .year-pick select:hover { border-color: var(--soft); }
+
+  /* ---------- notice / login ---------- */
+  .notice { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--ok); border-radius: var(--r); padding: 20px var(--pad); }
+  .notice[data-tone="warn"] { border-left-color: var(--alert); }
+  .notice-head { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 600; }
+  .notice .hint { margin: 8px 0 18px; font-size: 16px; color: var(--muted); max-width: 72ch; }
+  .login-grid { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(200px, 1fr) auto auto; gap: 14px; align-items: end; }
+  .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .field > label { font-size: 15px; color: var(--muted); }
+  .field input {
+    font: inherit; font-size: 17px; padding: 11px 12px; min-width: 0;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+  .captcha-row { display: flex; gap: 10px; align-items: center; }
+  .captcha-btn {
+    width: 165px; height: 55px; display: grid; place-items: center; overflow: hidden; padding: 0;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel-2); cursor: pointer; line-height: 0;
+  }
+  .captcha-btn img { width: 150px; height: 50px; display: block; }
+  .captcha-btn .captcha-msg { font-size: 13px; line-height: 1.3; color: var(--muted); padding: 0 8px; text-align: center; }
+  .captcha-btn[aria-busy="true"] { opacity: .6; cursor: progress; }
+  .captcha-row input { width: 104px; letter-spacing: .1em; font-family: var(--mono); }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap;
+    font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: var(--r);
+    border: 1px solid var(--soft); background: transparent; color: var(--text); text-decoration: none; line-height: 1.2;
+  }
+  .btn:hover:not(:disabled) { background: var(--panel-2); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn.primary { background: var(--btn); border-color: var(--btn); color: var(--btn-text); }
+  .btn.primary:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--btn-hover); }
+  .btn[aria-busy="true"] { cursor: progress; opacity: .7; }
+  .field-error { min-height: 1.2em; margin-top: 12px; font-size: 15px; color: var(--alert); }
+  .field-error:empty { display: none; }
+  .alt { margin-top: 14px; border-top: 1px solid var(--line-soft); padding-top: 12px; }
+  .alt > summary { cursor: pointer; font-size: 15px; color: var(--muted); }
+  .alt-row { display: flex; gap: 10px; margin-top: 12px; }
+  .alt-row input { flex: 1 1 auto; min-width: 0; }
+
+  /* ---------- dialog tandai ---------- */
+  dialog.sheet {
+    width: min(520px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line); border-radius: var(--r);
+    background: var(--panel); color: var(--text);
+  }
+  dialog.sheet::backdrop { background: rgba(0, 0, 0, .45); }
+  .sheet-head { padding: 18px var(--pad) 12px; border-bottom: 1px solid var(--line); }
+  .field-help { font-size: 12.5px; color: var(--muted); min-height: 1.2em; margin: 0; }
+  .sheet-head h3 { font-size: 19px; font-weight: 600; }
+  .sheet-head p { margin-top: 4px; font-size: 15px; color: var(--muted); }
+  .sheet-body { padding: 16px var(--pad); display: flex; flex-direction: column; gap: 14px; }
+  .sheet-foot { padding: 14px var(--pad); border-top: 1px solid var(--line); display: flex; gap: 10px; justify-content: flex-end; }
+  .sheet select, .sheet input {
+    font: inherit; font-size: 17px; padding: 11px 12px; width: 100%;
+    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width: 1080px) {
+    .login-grid { grid-template-columns: 1fr 1fr; }
+    .login-grid .captcha-field, .login-grid .login-submit { grid-column: span 2; }
+  }
+  @media (max-width: 760px) {
+    :root { --pad: 16px; }
+    body { font-size: 15px; }
+    .topbar { padding: 10px var(--pad); flex-wrap: wrap; row-gap: 8px; gap: 8px; }
+    .brand { flex: 1 1 100%; }
+    .topbar-right { flex: 1 1 100%; justify-content: flex-end; }
+    .brand svg { width: 18px; height: 18px; }
+    .icon-btn { width: 38px; height: 38px; }
+    .nav-link { padding: 7px 11px; font-size: 14px; }
+    .table-hint { display: none; }
+    .meta { display: none; }
+    .brand h1 { font-size: 16px; }
+    .brand .sub { font-size: 12px; }
+    .lead-figure .big { font-size: 40px; }
+    .panel-head { gap: 10px; }
+    .search { flex: 1 1 100%; }
+    .search input { width: 100%; }
+    .filters { flex-wrap: wrap; }
+    .col-petugas, .col-nik, .col-act { display: none; }
+    /* tiga kolom tersisa: nama | hasil | sebab — semuanya dipaksa muat tanpa geser */
+    .tbl-patients { table-layout: fixed; width: 100%; }
+    /* nth-child dihitung dari semua kolom termasuk yang display:none */
+    /* kolom hidden tidak menyisakan slot; lebar tiga kolom sisa dipatok agar tidak tumpang tindih */
+    .tbl-patients { table-layout: fixed; }
+    .tbl-patients th:nth-child(2) { width: 44%; }
+    .tbl-patients th:nth-child(4) { width: 26%; }
+    .tbl-patients th:nth-child(5) { width: 30%; }
+    .tbl-patients th, .tbl-patients td { padding: 11px 8px; }
+    .tbl-patients th[data-short] { font-size: 0; }
+    .tbl-patients th[data-short]::after { content: attr(data-short); font-size: 10.5px; }
+    .tbl-patients td.cell-name { overflow: hidden; text-overflow: ellipsis; }
+    .tbl-patients .verdict { white-space: normal; font-size: 14px; gap: 5px; }
+    .tbl-patients .v-long { display: none; }
+    .tbl-patients .v-short { display: inline; }
+    .tbl-patients th:nth-child(2) { width: 40%; }
+    .tbl-patients th:nth-child(4) { width: 22%; }
+    .tbl-patients th:nth-child(5) { width: 38%; }
+    .tbl-patients td .reason { display: block; }
+    /* di layar sempit, ketuk baris untuk menandai (kolom tindakan hilang) */
+    #detail tbody tr { cursor: pointer; }
+    th, td { padding: 12px 10px; }
+    .reason .note { flex-basis: 100%; }
+    /* layar sempit: nama pasien lebih penting daripada pengulangan nama petugas */
+    #detail .col-petugas { display: none; }
+    #perPetugas { table-layout: auto; width: 100%; }
+    #perPetugas th, #perPetugas td { padding: 10px 3px; }
+    .tbl-petugas th { font-size: 0; letter-spacing: 0; }
+    .tbl-petugas th::before { font-size: 9.5px; }
+    .tbl-petugas th:nth-child(1)::before { content: "Petugas"; }
+    .tbl-petugas th:nth-child(2)::before { content: "Tugas"; }
+    .tbl-petugas th:nth-child(3)::before { content: "Sdh"; }
+    .tbl-petugas th:nth-child(4)::before { content: "Blm"; }
+    .tbl-petugas th:nth-child(5)::before { content: "%"; }
+    #perPetugas td { font-size: 14px; }
+    #perPetugas .cell-name { font-size: 14px; max-width: none; }
+    .tbl-petugas th:first-child, .tbl-petugas td:first-child { width: 32%; }
+    /* di layar sempit, capaian berupa angka saja agar tabel tidak meluber */
+    #perPetugas .meter .track { display: none; }
+    #perPetugas .meter { gap: 0; }
+    #perPetugas .meter .val { min-width: 0; }
+    #perPetugas th:last-child { text-align: right; }
+    .hide-sm { display: none; }
+    .footer-note { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <header class="topbar">
+    <div class="brand">
+      <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <rect x="0" y="10" width="3" height="8" fill="currentColor" opacity=".35" />
+        <rect x="5" y="5" width="3" height="13" fill="currentColor" opacity=".65" />
+        <rect x="10" y="1" width="3" height="17" fill="currentColor" />
+        <rect x="15" y="7" width="3" height="11" fill="currentColor" opacity=".45" />
+      </svg>
+      <div>
+        <h1>Monev CKG</h1>
+        <p class="sub">Puskesmas Baruharjo</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <p class="sync-note" id="syncNote" title="Waktu terakhir data SSI ditarik ke aplikasi ini">—</p>
+      <label class="year-pick">
+        <span class="sr">Pilih batch</span>
+        <select id="batchSelect" aria-label="Pilih batch penugasan"></select>
+      </label>
+      <button class="icon-btn" id="themeBtn" type="button" title="Ganti tema terang/gelap">
+        <svg class="i-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M15.5 12.4A6.2 6.2 0 0 1 7.6 4.5a6.2 6.2 0 1 0 7.9 7.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+        </svg>
+        <svg class="i-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true" hidden>
+          <circle cx="10" cy="10" r="3.6" stroke="currentColor" stroke-width="1.6" />
+          <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+        </svg>
+      </button>
+      <a class="icon-btn" href="/admin" id="adminBtn" title="Halaman admin" aria-label="Halaman admin">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M3 5.5h14M3 10h14M3 14.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <circle cx="15.5" cy="14.5" r="2" stroke="currentColor" stroke-width="1.6" />
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <section class="tiles" aria-label="Ringkasan monev">
+    <article class="tile tile--lead">
+      <div class="tile-label">Capaian input</div>
+      <div class="lead-figure">
+        <span class="big" id="leadPct">—</span>
+        <span class="of"><b id="leadDone">—</b> diinput dari <b id="leadAssigned">—</b> pasien</span>
+      </div>
+      <div class="lead-bar" id="leadBar" aria-hidden="true"><i class="a" style="width:0"></i><i class="b" style="width:0"></i></div>
+      <div class="lead-key">
+        <span><i class="k-a"></i>Diinput</span>
+        <span><i class="k-g"></i>Gagal input</span>
+        <span><i class="k-b"></i>Belum diinput</span>
+      </div>
+    </article>
+
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Capaian Entry Petugas</h2>
+      <span class="spacer"></span>
+      <a class="btn" id="btnPdf" href="/api/report.pdf" download
+         title="Unduh rekap capaian semua petugas sebagai PDF satu halaman">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" style="width:15px;height:15px">
+          <path d="M10 3v9m0 0 3.2-3.2M10 12 6.8 8.8M4 14v2.5h12V14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Unduh PDF
+      </a>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl-petugas">
+        <caption class="sr">Rekap dua kategori per petugas</caption>
+        <thead>
+          <tr>
+            <th scope="col">Petugas</th>
+            <th scope="col" class="num">Ditugaskan</th>
+            <th scope="col" class="num">Diinput</th>
+            <th scope="col" class="num" title="Sudah ditandai data tidak valid / faskes lain, dianggap beres">Gagal input</th>
+            <th scope="col" class="num">Belum diinput</th>
+            <th scope="col" class="r">Capaian</th>
+          </tr>
+        </thead>
+        <tbody id="perPetugas"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Pasien</h2>
+      <span class="spacer"></span>
+      <label class="year-pick">
+        <span class="sr">Filter petugas</span>
+        <select id="petugasFilter" aria-label="Filter petugas"></select>
+      </label>
+      <div class="filters" id="filterBar" role="group" aria-label="Filter hasil"></div>
+      <div class="search">
+        <label class="sr" for="q">Cari nama, NIK, atau petugas</label>
+        <input id="q" type="search" placeholder="Cari nama, NIK, petugas" autocomplete="off" />
+      </div>
+      <a class="caption" id="adminHint" href="/admin" hidden>Masuk admin untuk menandai atau mengunduh</a>
+      <a class="btn" id="btnPatientsXlsx" href="/api/patients.xlsx" download
+         title="Unduh daftar pasien sesuai filter yang aktif, dengan NIK penuh">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true" style="width:15px;height:15px">
+          <path d="M10 3v9m0 0 3.2-3.2M10 12 6.8 8.8M4 14v2.5h12V14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Unduh Excel
+      </a>
+    </div>
+    <div class="table-wrap">
+      <table class="tbl-patients">
+        <caption class="sr">Hasil input setiap pasien yang ditugaskan</caption>
+        <thead>
+          <tr>
+            <th scope="col" class="col-petugas">Petugas</th>
+            <th scope="col">Pasien</th>
+            <th scope="col" class="col-nik">NIK</th>
+            <th scope="col">Hasil</th>
+            <th scope="col" class="r col-act">Tindakan</th>
+          </tr>
+        </thead>
+        <tbody id="detail"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="caption faint footer-note">© <span id="yr">2026</span> Monev CKG — Puskesmas Baruharjo</p>
+</div>
+
+<dialog class="sheet" id="flagSheet" aria-labelledby="flagTitle">
+  <form method="dialog" id="flagForm">
+    <div class="sheet-head">
+      <h3 id="flagTitle">Tandai hasil</h3>
+      <p id="flagSub">—</p>
+    </div>
+    <div class="sheet-body">
+      <div class="field">
+        <label for="edReason">Hasil</label>
+        <select id="edReason"></select>
+        <p class="field-help" id="edReasonHelp"></p>
+      </div>
+      <div class="field">
+        <label for="edNote">Catatan (opsional)</label>
+        <input id="edNote" placeholder="mis. sudah dientry di PKM X" />
+      </div>
+    </div>
+    <div class="sheet-foot">
+      <button class="btn" type="button" id="flagCancel">Batal</button>
+      <button class="btn primary" type="submit" id="flagSave">Simpan</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const FILTERS = [
+  ['', 'Semua'],
+  ['DIINPUT', 'Diinput'],
+  ['BELUM', 'Belum diinput'],
+  ['TIDAK_VALID', 'Data tidak valid'],
+  ['FASKES_LAIN', 'Faskes lain'],
+  ['DATA_HILANG', 'Data hilang'],
+  ['LAINNYA', 'Gagal lainnya'],
+];
+const REASON_CODE = {
+  nik_tidak_valid: 'Data tidak valid',
+  faskes_lain: 'Faskes lain',
+  data_hilang: 'Data hilang',
+  nik_tidak_terdaftar: 'NIK tidak terdaftar',
+  pasien_tidak_ditemukan: 'Pasien tidak ditemukan',
+  lainnya: 'Lainnya',
+};
+const state = {
+  rows: [], totals: null, status: null,
+  filter: '', query: '',
+  options: { reasons: [] },
+  editing: null,
+  batch: null,
+  batches: [],
+  admin: false,
+  petugas: '',
+};
+
+const fmt = (n) => new Intl.NumberFormat('id-ID').format(n ?? 0);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pctText = (n) => (n > 0 && n < 1 ? '&lt;1' : String(n).replace('.', ','));
+
+function relTime(iso) {
+  if (!iso) return 'belum pernah';
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+  if (m < 1) return 'baru saja';
+  if (m < 60) return m + ' menit lalu';
+  const h = Math.round(m / 60);
+  if (h < 24) return h + ' jam lalu';
+  const d = Math.round(h / 24);
+  if (d < 30) return d + ' hari lalu';
+  return Math.round(d / 30) + ' bulan lalu';
+}
+const clock = (iso) => (iso ? new Date(iso).toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' }) : '—');
+
+/* ---------- tema: satu tombol, dua mode ---------- */
+function applyTheme(theme, persist) {
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.style.colorScheme = theme;
+  const dark = theme === 'dark';
+  // SVG punya atribut `hidden` sendiri, jadi .hidden/toggleAttribute tidak sinkron — pakai atribut.
+  const moon = $('#themeBtn').querySelector('.i-moon');
+  const sun = $('#themeBtn').querySelector('.i-sun');
+  if (dark) { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
+  else { moon.setAttribute('hidden', ''); sun.removeAttribute('hidden'); }
+  $('#themeBtn')?.setAttribute('aria-label', dark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap');
+  if (persist) {
+    try { localStorage.setItem('monev-theme', theme); } catch (e) {}
+  }
+}
+$('#themeBtn').addEventListener('click', () => {
+  applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+});
+applyTheme(document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light', false);
+
+/* ---------- data ---------- */
+const isDiinput = (r) => r.verdict.status === 'LENGKAP';
+/**
+ * Empat hasil akhir. "Data tidak valid" HANYA dari tanda penginput/supervisor:
+ * SSI menolak NIK setelah dicoba didaftarkan, dan itu tidak bisa disimpulkan dari data mentah.
+ */
+// Server mengirim `bucket`; hitungan lokal hanya cadangan bila field itu tidak ada.
+const bucket = (r) => r.bucket ?? (
+  isDiinput(r) ? 'DIINPUT'
+    : r.failReason === 'faskes_lain' ? 'FASKES_LAIN'
+    : r.failReason === 'data_hilang' ? 'DATA_HILANG'
+    : r.failReason === 'nik_tidak_valid' || r.failReason === 'nik_tidak_terdaftar' ? 'TIDAK_VALID'
+    : r.failReason ? 'LAINNYA'
+    : 'BELUM'
+);
+
+/**
+ * Status SSI sekarang hanya dipakai untuk mengunci tombol di halaman admin.
+ * Halaman laporan tidak lagi menampilkan sesi sama sekali (permintaan: topbar bersih).
+ */
+async function loadStatus() {
+  try {
+    state.status = await (await fetch('/api/status')).json();
+  } catch (e) {
+    state.status = null;
+  }
+  renderSyncNote();
+  return state.status;
+}
+
+function renderSummary(t) {
+  if (!t) return;
+  const assigned = t.assigned || 0;
+  // Capaian = diinput + gagal input (tidak valid / faskes lain sudah dianggap beres).
+  $('#leadPct').textContent = assigned ? pctText(t.pctCapaian) + '%' : '—';
+  $('#leadDone').textContent = fmt(t.selesai);
+  $('#leadAssigned').textContent = fmt(assigned);
+  const a = assigned ? (t.diinput / assigned) * 100 : 0;
+  const g = assigned ? (t.gagalDitandai / assigned) * 100 : 0;
+  const b = assigned ? (t.perluTindakan / assigned) * 100 : 0;
+  $('#leadBar').innerHTML = '<i class="a" style="width:' + a + '%"></i>' +
+    '<i class="g" style="width:' + g + '%"></i><i class="b" style="width:' + b + '%"></i>';
+
+}
+
+function renderPerPetugas(list) {
+  const body = $('#perPetugas');
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6" class="cell-empty"><b>Belum ada penugasan.</b> Buka <a href="/admin">halaman admin</a> untuk mengimpor Excel.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map((p) => {
+    const pct = Math.min(100, Number(p.pctCapaian) || 0);
+    return '<tr>' +
+      '<td class="cell-name">' + esc(p.petugas) + '</td>' +
+      '<td class="num">' + fmt(p.assigned) + '</td>' +
+      '<td class="num" style="color:var(--ok)">' + fmt(p.diinput) + '</td>' +
+      '<td class="num"' + (p.gagalDitandai ? ' style="color:var(--muted)"' : ' class="num faint"') +
+        ' title="' + esc(p.tidakValid + ' tidak valid, ' + p.faskesLain + ' faskes lain, ' + (p.dataHilang || 0) + ' data hilang') + '">' +
+        fmt(p.gagalDitandai) + '</td>' +
+      '<td class="num"' + (p.perluTindakan ? ' style="color:var(--alert);font-weight:600"' : '') + '>' +
+        fmt(p.perluTindakan) + '</td>' +
+      '<td class="r"><span class="meter"><span class="track"><i class="fill" style="width:' + pct + '%"></i></span><span class="val">' + pctText(pct) + '%</span></span></td>' +
+      '</tr>';
+  }).join('');
+}
+
+/** Waktu tarik data SSI terakhir. Ditaruh di header karena berlaku untuk seluruh halaman. */
+function renderSyncNote() {
+  const el = $('#syncNote');
+  if (!el) return;
+  const at = state.status?.lastSyncAt;
+  if (!at) { el.textContent = 'Belum ada sinkron SSI'; el.title = 'Data SSI belum pernah ditarik di server ini.'; return; }
+  const d = new Date(at);
+  const sameDay = d.toDateString() === new Date().toDateString();
+  const time = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const label = sameDay ? time : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }) + ' ' + time;
+  el.innerHTML = 'Sinkron <b>' + esc(label) + '</b>';
+  el.title = 'Sinkron SSI terakhir: ' + d.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' }) +
+    (state.status?.visits ? ' · ' + fmt(state.status.visits) + ' kunjungan tersimpan' : '');
+}
+
+/**
+ * Header memakai pemilih BATCH, bukan tahun: satu batch = satu periode monev, sehingga
+ * laporan, PDF, dan unduhan selalu merujuk ke himpunan data yang sama.
+ */
+async function loadBatches() {
+  try {
+    const j = await (await fetch('/api/batches')).json();
+    state.batches = j.batches ?? [];
+  } catch (e) {
+    state.batches = [];
+  }
+  const sel = $('#batchSelect');
+  if (!sel) return;
+  // Default = batch terbaru yang punya isi; batch kosong (baru dibuat) jangan jadi pilihan awal.
+  const firstWithRows = state.batches.find((b) => Number(b.row_count ?? 0) > 0);
+  const current = state.batch ?? firstWithRows?.id ?? state.batches[0]?.id ?? null;
+  sel.innerHTML = state.batches.length
+    ? state.batches.map((b) => {
+        const year = b.period_start ? String(b.period_start).slice(0, 4) : '';
+        const label = (b.name ?? 'Batch ' + b.id) + (year && !String(b.name ?? '').includes(year) ? ' ' + year : '');
+        return '<option value="' + b.id + '"' + (b.id === current ? ' selected' : '') + '>' + esc(label) + '</option>';
+      }).join('')
+    : '<option value="">Belum ada batch</option>';
+  state.batch = current;
+}
+
+$('#batchSelect').addEventListener('change', async () => {
+  state.batch = Number($('#batchSelect').value) || null;
+  await loadReport();
+});
+
+function renderFilterBar() {
+  const scoped = rowsOfPetugas();
+  const counts = { '': scoped.length, DIINPUT: 0, BELUM: 0, TIDAK_VALID: 0, FASKES_LAIN: 0, DATA_HILANG: 0, LAINNYA: 0 };
+  for (const r of scoped) counts[bucket(r)]++;
+  $('#filterBar').innerHTML = FILTERS.map(([value, label]) =>
+    '<button type="button" data-value="' + value + '" aria-pressed="' + (state.filter === value) + '">' +
+    label + '<span class="c">' + fmt(counts[value] || 0) + '</span></button>'
+  ).join('');
+}
+
+const VERDICT = {
+  DIINPUT: { tone: 'diinput', long: 'Diinput', short: 'Input' },
+  BELUM: { tone: 'belum', long: 'Belum diinput', short: 'Belum' },
+  TIDAK_VALID: { tone: 'invalid', long: 'Data tidak valid', short: 'Tdk valid' },
+  FASKES_LAIN: { tone: 'lain', long: 'Faskes lain', short: 'Faskes lain' },
+  DATA_HILANG: { tone: 'hilang', long: 'Data hilang', short: 'Hilang' },
+  LAINNYA: { tone: 'lain', long: 'Gagal (lainnya)', short: 'Lainnya' },
+};
+
+function verdictCell(r) {
+  const v = VERDICT[bucket(r)];
+  return '<span class="verdict" data-v="' + v.tone + '"><span class="dot" aria-hidden="true"></span>' +
+    '<span class="v-long">' + v.long + '</span><span class="v-short">' + v.short + '</span></span>';
+}
+
+/** Baris setelah filter petugas — dipakai filter status, daftar, dan unduhan. */
+function rowsOfPetugas() {
+  return state.petugas ? state.rows.filter((r) => r.petugas === state.petugas) : state.rows;
+}
+
+function renderDetail() {
+  document.querySelector('.tbl-patients')?.classList.toggle('no-admin', !state.admin);
+  const q = state.query.trim().toLowerCase();
+  const rows = rowsOfPetugas().filter((r) => {
+    if (state.filter && bucket(r) !== state.filter) return false;
+    if (!q) return true;
+    return [r.name, r.nik, r.petugas].some((v) => String(v ?? '').toLowerCase().includes(q));
+  });
+  const body = $('#detail');
+  if (!state.rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="cell-empty"><b>Belum ada data.</b> Buka <a href="/admin">halaman admin</a> untuk mengimpor Excel.</td></tr>';
+    return;
+  }
+  if (!rows.length) {
+    body.innerHTML = '<tr><td colspan="5" class="cell-empty">Tidak ada baris yang cocok.' +
+      ' <button class="btn" id="clearFilters" type="button">Bersihkan</button></td></tr>';
+    return;
+  }
+  body.innerHTML = rows.slice(0, 500).map((r) => {
+    const nik = r.nik ? r.nik.slice(0, 6) + '···' + r.nik.slice(-4) : '—';
+    return '<tr data-id="' + r.assignmentId + '">' +
+      '<td class="col-petugas muted">' + esc(r.petugas) + '</td>' +
+      '<td class="cell-name">' + esc(r.name || '—') +
+        (r.nameSource === 'ssi' ? '<span class="name-src" title="Nama diambil dari kunjungan SSI, bukan dari Excel">SSI</span>' : '') +
+      '</td>' +
+      '<td class="mono col-nik faint" title="' + esc(r.nik ?? '') + '">' + esc(nik) + '</td>' +
+      '<td>' + verdictCell(r) + '</td>' +
+      (state.admin
+        ? '<td class="r col-act"><button class="btn" type="button" data-flag="' + r.assignmentId + '">' +
+          (r.failReason ? 'Ubah' : 'Tandai') + '</button></td>'
+        : '') +
+      '</tr>';
+  }).join('');
+}
+
+async function loadReport() {
+  const qs = state.batch ? '?batch=' + encodeURIComponent(state.batch) : '';
+  // PDF dan unduhan mengikuti batch yang sedang dilihat, supaya yang dicetak = yang di layar.
+  $('#btnPdf').setAttribute('href', '/api/report.pdf' + qs);
+  const r = await (await fetch('/api/report' + qs)).json();
+  state.rows = r.rows ?? [];
+  state.totals = r.totals;
+  state.batch = r.batchId ?? state.batch;
+  await loadAdmin();
+  renderSummary(r.totals);
+  renderPerPetugas(r.perPetugas ?? []);
+  renderFilterBar();
+  renderDetail();
+  renderPetugasFilter();
+}
+
+/** Isi dropdown petugas dari data laporan; pilihan dipertahankan saat data dimuat ulang. */
+function renderPetugasFilter() {
+  const sel = $('#petugasFilter');
+  if (!sel) return;
+  const names = [...new Set(state.rows.map((r) => r.petugas))].sort((a, b) => a.localeCompare(b));
+  if (state.petugas && !names.includes(state.petugas)) state.petugas = '';
+  sel.innerHTML = '<option value="">Semua petugas</option>' +
+    names.map((n) => '<option value="' + esc(n) + '"' + (n === state.petugas ? ' selected' : '') + '>' + esc(n) + '</option>').join('');
+  syncDownloadHref();
+}
+
+/** Unduhan mengikuti persis filter yang terlihat: tahun, petugas, status, dan pencarian. */
+function syncDownloadHref() {
+  const link = $('#btnPatientsXlsx');
+  if (!link) return;
+  const p = new URLSearchParams();
+  if (state.batch) p.set('batch', String(state.batch));
+  if (state.petugas) p.set('petugas', state.petugas);
+  if (state.filter) p.set('status', state.filter);
+  if (state.query.trim()) p.set('q', state.query.trim());
+  const qs = p.toString();
+  link.setAttribute('href', '/api/patients.xlsx' + (qs ? '?' + qs : ''));
+  link.title = 'Unduh ' + fmt(rowsOfPetugas().filter((r) => !state.filter || bucket(r) === state.filter).length) +
+    ' baris sesuai filter aktif, dengan NIK penuh';
+}
+
+/**
+ * Tandai dan unduh daftar pasien hanya untuk admin. Ini hanya lapisan tampilan;
+ * server juga menolak kedua endpoint itu tanpa sesi admin.
+ */
+async function loadAdmin() {
+  try {
+    const j = await (await fetch('/api/admin')).json();
+    const next = !j.needPassword || Boolean(j.unlocked);
+    if (next !== state.admin) state.admin = next;
+  } catch (e) {
+    state.admin = false;
+  }
+  const hint = $('#adminHint');
+  if (hint) hint.hidden = state.admin;
+  const dl = $('#btnPatientsXlsx');
+  if (dl) dl.hidden = !state.admin;
+  syncDownloadHref();
+}
+
+async function loadOptions() {
+  try {
+    const j = await (await fetch('/api/flags/options')).json();
+    state.options = { reasons: Array.isArray(j.reasons) ? j.reasons : [] };
+  } catch (e) {
+    state.options = { reasons: [] };
+  }
+}
+
+/* ---------- dialog tandai ---------- */
+function openFlagSheet(id) {
+  const row = state.rows.find((r) => r.assignmentId === id);
+  if (!row) return;
+  state.editing = id;
+  const help = (code) => (state.options.reasons ?? []).find((r) => r.code === code)?.help ?? '';
+  const syncHelp = () => { $('#edReasonHelp').textContent = help($('#edReason').value); };
+  $('#edReason').onchange = syncHelp;
+  // Tiga kategori yang disepakati. Tanda lama di luar itu tetap ditampilkan
+  // (dan bisa diganti/dihapus) supaya tidak ada nilai tersembunyi di layar.
+  const manual = state.options.reasons ?? [];
+  const legacy = row.failReason && !manual.some((o) => o.code === row.failReason)
+    ? [{ code: row.failReason, label: (row.failReasonLabel || row.failReason) + ' (lama)' }]
+    : [];
+  $('#edReason').innerHTML = '<option value="">— hapus tanda (kembali "Belum diinput") —</option>' +
+    [...manual, ...legacy].map((o) => '<option value="' + esc(o.code) + '"' + (row.failReason === o.code ? ' selected' : '') + '>' + esc(o.label) + '</option>').join('');
+  $('#edNote').value = row.note ?? '';
+  $('#flagSub').textContent = (row.name || 'Pasien') + ' · ' + row.petugas;
+  syncHelp();
+  $('#flagSheet').showModal();
+  $('#edReason').focus();
+}
+
+$('#flagCancel').addEventListener('click', () => { state.editing = null; $('#flagSheet').close(); });
+$('#flagSheet').addEventListener('close', () => { state.editing = null; });
+
+$('#flagForm').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const id = state.editing;
+  if (!id) return;
+  const failReason = $('#edReason').value || null;
+  const note = $('#edNote').value.trim() || null;
+  const save = $('#flagSave');
+  save.disabled = true;
+  save.setAttribute('aria-busy', 'true');
+  try {
+    const res = await fetch('/api/flags/set', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, failReason, note, by: 'supervisor' }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    $('#flagSheet').close();
+    await loadReport();
+  } catch (e) {
+    $('#flagSub').textContent = 'Gagal menyimpan: ' + e.message;
+    save.disabled = false;
+    save.removeAttribute('aria-busy');
+  }
+});
+
+$('#detail').addEventListener('click', (event) => {
+  const flag = event.target.closest('button[data-flag]');
+  if (flag) {
+    if (!state.admin) { location.href = '/admin'; return; }
+    return openFlagSheet(Number(flag.dataset.flag));
+  }
+  // Layar sempit tidak menampilkan kolom Tindakan: seluruh baris bisa diketuk.
+  const row = event.target.closest('tr[data-id]');
+  if (row && state.admin && !event.target.closest('button, a')) return openFlagSheet(Number(row.dataset.id));
+  if (event.target.closest('#clearFilters')) {
+    state.filter = '';
+    state.query = '';
+    state.petugas = '';
+    $('#q').value = '';
+    if ($('#petugasFilter')) $('#petugasFilter').value = '';
+    renderFilterBar();
+    renderDetail();
+    renderPetugasFilter();
+  }
+});
+
+$('#filterBar').addEventListener('click', (event) => {
+  const btn = event.target.closest('button[data-value]');
+  if (!btn) return;
+  state.filter = btn.dataset.value;
+  renderFilterBar();
+  renderDetail();
+  renderPetugasFilter();
+});
+
+$('#petugasFilter').addEventListener('change', () => {
+  state.petugas = $('#petugasFilter').value;
+  renderFilterBar();
+  renderDetail();
+  syncDownloadHref();
+});
+
+$('#q').addEventListener('input', () => {
+  state.query = $('#q').value;
+  renderDetail();
+  syncDownloadHref();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === '/' && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName)) {
+    event.preventDefault();
+    $('#q').focus();
+  }
+  if (event.key === 'Escape' && document.activeElement === $('#q')) {
+    $('#q').value = ''; state.query = ''; renderDetail(); $('#q').blur();
+  }
+});
+
+$('#yr').textContent = new Date().getFullYear();
+
+/* ---------- init ---------- */
+(async function init() {
+  try {
+    await loadBatches();
+    loadStatus();
+    await loadOptions();
+    await loadReport();
+  } catch (e) {
+    console.error('gagal memuat laporan');
+  }
+})();
+</script>
+</body>
+</html>

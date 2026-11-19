@@ -1,0 +1,8 @@
+node_modules
+data
+.shot
+.probe*
+.tmp*
+.cookie-tmp
+.git
+*.log
