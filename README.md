@@ -48,7 +48,7 @@ Sync penuh ±36 detik. Kirim ulang aman: baris dengan `content_hash` sama hanya 
 ## Deploy: Vercel + Supabase
 
 Artefak yang dipakai: `api/index.ts` (satu fungsi untuk semua path), `vercel.json`
-(`maxDuration: 300`, `includeFiles: web/**` + `src/core/db/*.sql`), `src/core/db/schema.pg.sql`.
+(`maxDuration: 300`, `includeFiles: web/**`), skema di `src/core/db/schema.ts` (string TS, ikut ter-bundel).
 
 ### 1. Environment variables di Vercel (Production)
 

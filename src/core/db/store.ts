@@ -1,6 +1,3 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { hostname } from 'node:os';
 import { openDb, type Db } from './db.ts';
 
@@ -20,18 +17,9 @@ export function flagKey(petugas: string, nik: string | null): string {
   return normalizeName(petugas).replace(/\s+/g, ' ') + '|' + String(nik ?? '').trim();
 }
 
-const here = dirname(fileURLToPath(import.meta.url));
-/**
- * Setelah dibundel (Vercel/@vercel/node), `import.meta.url` menunjuk ke bundel, bukan
- * ke folder ini — jadi resolusi pertama gagal. Cari juga di lokasi sumber relatif cwd
- * (`src/core/db/*.sql` disertakan lewat `includeFiles` di vercel.json).
- */
-function schemaText(file: string): string {
-  for (const p of [join(here, file), join(process.cwd(), 'src', 'core', 'db', file)]) {
-    if (existsSync(p)) return readFileSync(p, 'utf8');
-  }
-  throw new Error(`Skema ${file} tidak ditemukan. Sertakan src/core/db/*.sql saat deploy.`);
-}
+// Skema diimpor sebagai string (schema.ts), bukan dibaca dari disk: fungsi serverless
+// dibundel, jadi path relatif modul tidak menunjuk folder sumber.
+import { SCHEMA_PG, SCHEMA_SQLITE } from './schema.ts';
 
 export interface VisitRow {
   reg_id: string;
@@ -113,7 +101,7 @@ export class Store {
   static async open(opts: { sqlitePath?: string; databaseUrl?: string }): Promise<Store> {
     const db = await openDb(opts);
     const store = new Store(db);
-    await db.exec(schemaText(db.dialect === 'pg' ? 'schema.pg.sql' : 'schema.sql'));
+    await db.exec(db.dialect === 'pg' ? SCHEMA_PG : SCHEMA_SQLITE);
     await store.migrate();
     return store;
   }
