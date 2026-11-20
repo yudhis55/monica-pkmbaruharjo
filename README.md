@@ -2,48 +2,50 @@
 
 Memeriksa apakah pasien yang ditugaskan ke tiap pegawai **sudah diinput di Sehat IndonesiaKu (SSI)**, dengan mencocokkan Excel penugasan terhadap snapshot kunjungan SSI.
 
-## Satu mode: prod mengurus semuanya
+## Dua peran, satu basis data
 
-**Tidak perlu aplikasi lokal.** Prod memegang sesi SSI, menarik data, menghitung monev, dan menyajikan laporan.
+Aplikasi yang sama bisa berjalan di dua tempat; keduanya memakai `DATABASE_URL` yang sama, jadi datanya tidak perlu disalin.
 
-Dasar empiris (diuji langsung, bukan asumsi):
+| Peran | Tempat | Yang dikerjakan |
+|---|---|---|
+| **Dasbor** | Vercel (`monica.pkmbaruharjo.my.id`, region `sin1`) | laporan publik, admin, impor Excel, penanda, ekspor PDF/Excel |
+| **Penarik data** | PC puskesmas (`npm start`, `localhost:4321`) | masuk SSI (captcha), tarik kunjungan, simpan ke database |
+
+Alasannya diukur, bukan diasumsikan (20 Nov 2026):
+
+| Dari mana | `GET /api/crypto-key` | `GET /auth/login` | Keterangan |
+|---|---|---|---|
+| Jaringan Indonesia (PC puskesmas) | **200** | **200** | normal, ±260 ms |
+| Vercel `iad1` (Washington) | **403** | **403** | HTML generik `403 Forbidden`, tanpa `cf-ray` |
+| Vercel `sin1` (Singapura) | **403** | **403** | sama — bukan soal jarak, tapi penolakan IP cloud/asing |
+
+Header permintaan identik di ketiga kasus (UA Chrome, `accept`, `referer`), jadi bukan soal header. SSI menolak rentang IP pusat data. Karena itu instance Vercel **menyembunyikan** tombol cek sesi/masuk/tarik data dan menampilkan petunjuk; `ssiFetchAvailable` di `/api/status` bernilai `false` di sana. Paksa dengan `MONEV_SSI_FETCH=on|off` bila perlu.
+
+### Prosedur harian
+
+1. Di PC puskesmas: `npm start` (butuh `DATABASE_URL` yang sama dengan Vercel).
+2. Buka `http://localhost:4321/admin`, masuk SSI (captcha sekali), klik **Tarik data SSI**.
+3. Dasbor Vercel otomatis menampilkan angka baru — database sama, tanpa langkah sinkron.
+
+Alternatif tanpa menjalankan server lokal: `npx tsx src/cli.ts sync --push https://monica.pkmbaruharjo.my.id --push-token <MONEV_INGEST_TOKEN>`; pengirim memakai `x-ingest-token`, potongan 500 kunjungan per permintaan (batas body Vercel 4,5 MB).
+
+### Yang sudah terbukti soal SSI
 
 | Pertanyaan | Hasil uji |
 |---|---|
 | Ada Cloudflare/challenge? | **Tidak.** `server: Google Frontend`, tanpa `cf-ray`. |
 | Butuh browser untuk login? | **Tidak.** `POST /api/user-management/login` menerima JSON biasa. |
-| Butuh `cf_clearance`? | **Tidak.** Seluruh sync 13.373 baris berjalan dari Node tanpa browser. |
-| Login butuh apa? | `email`, `password`, `captcha_id`, `captcha_code` — captcha cuma 1 gambar. |
-| Captcha bisa diotomatiskan? | **Tidak.** JPEG 150×50, 4 karakter; harus dibaca manusia. |
-| Endpoint baca memeriksa token? | **Tidak.** Token karangan tetap menghasilkan 13.373 baris; hanya *keberadaan* cookie yang dicek. Token kosong → 401. |
+| Login butuh apa? | `email`, `password`, `captcha_id`, `captcha_code` — captcha 1 gambar, 4 karakter. |
+| Captcha bisa diotomatiskan? | **Tidak.** Harus dibaca manusia, sekali per sesi. |
+| Endpoint baca memeriksa token? | **Tidak.** Hanya *keberadaan* cookie `token_eksternal` yang dicek. |
 
-Satu-satunya langkah manusia: **mengetik 4 karakter captcha sekali per sesi**, di halaman prod. Sesudah itu `refresh_token` dirotasi otomatis tiap 6 jam.
+Satu-satunya langkah manusia: **mengetik 4 karakter captcha sekali per sesi**. Sesudah itu `refresh_token` dirotasi otomatis tiap 6 jam.
 
 ### Kapan layar login muncul
 
-Endpoint baca SSI hanya memeriksa **keberadaan** cookie `token_eksternal`, bukan keabsahannya. Konsekuensinya:
-
-- Token yang sudah dicabut **tetap** bisa menarik data → monev tidak akan berhenti mendadak saat Anda login di browser lain.
-- Token **kosong** → 401. Jadi instalasi baru tetap perlu login sekali.
-- `refresh-token` adalah satu-satunya pemeriksaan kredensial yang jujur. Kalau gagal, monev mencatat pesannya dan menampilkan form login — tapi tombol **Tarik data SSI** tetap aktif.
-
-Tombol **Masuk ulang** selalu ada di toolbar kalau Anda ingin memaksa form muncul.
+Endpoint baca SSI hanya memeriksa keberadaan cookie, bukan keabsahannya. Konsekuensinya: token yang sudah dicabut tetap bisa menarik data, token kosong → 401, dan `refresh-token` adalah satu-satunya pemeriksaan kredensial yang jujur.
 
 > Catatan dokumen lama (`FLOW-SEHATINDONESIAKU.md`) menyebut Cloudflare dan "login manual via browser". Itu tidak lagi berlaku — sudah diverifikasi ulang.
-
-### Kalau tetap mau collector terpisah
-
-Kode yang sama bisa dipakai topologi dua mesin: lokal menjalankan `sync --push`, prod menerima snapshot lewat `POST /api/ingest/visits`. Nonaktif secara default (`MONEV_INGEST_TOKEN` kosong → 403). Berguna bila IP mesin prod diblokir suatu saat.
-
-```mermaid
-flowchart LR
-  SSI[("Sehat IndonesiaKu")] -->|login captcha sekali| PROD["prod: collector + dashboard"]
-  PROD -->|"GET list-kunjungan-umum<br/>3 halaman / 13.373 baris"| SSI
-  XLSX["Excel penugasan"] --> PROD
-  PROD -->|"/api/report, /api/report.xlsx"| USER["Petugas / koordinator"]
-```
-
-Sync penuh ±36 detik. Kirim ulang aman: baris dengan `content_hash` sama hanya memperbarui `last_seen_at`.
 
 ## Deploy: Vercel + Supabase
 
