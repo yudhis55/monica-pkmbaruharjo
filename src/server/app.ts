@@ -258,6 +258,7 @@ export async function buildApp() {
       lastSyncFetched: run?.fetched ?? 0,
       faskesCode: CONFIG.faskesCode,
       syncing,
+      ssiFetchAvailable: CONFIG.ssiFetch,
       ...(await sweepRange()),
     };
   });

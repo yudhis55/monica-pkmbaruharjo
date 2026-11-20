@@ -46,6 +46,14 @@ export const CONFIG = {
    * Hentikan setelah 200 detik; cursor melanjutkan halaman berikutnya.
    */
   syncMaxMs: Number(process.env.MONEV_SYNC_MAX_MS ?? (process.env.VERCEL ? 200_000 : 0)),
+  /**
+   * Apakah instance ini bisa menjangkau SSI. Diukur 20 Nov 2026: dari Vercel (iad1 dan
+   * sin1) `GET /api/crypto-key` dan `/auth/login` dibalas 403 Forbidden, sedangkan dari
+   * jaringan Indonesia 200 — SSI menolak IP cloud/asing. Default: mati di Vercel.
+   */
+  ssiFetch: process.env.MONEV_SSI_FETCH
+    ? process.env.MONEV_SSI_FETCH === 'on'
+    : !process.env.VERCEL,
   /** Identitas user SSI. Wajib ikut di payload; server memvalidasi faskes dari sini. */
   userId: String(userEksternal?.id ?? process.env.SSI_USER_ID ?? '1221065'),
   fullname: String(userEksternal?.name ?? process.env.SSI_FULLNAME ?? 'Yudhistira Surya Ristyanto'),

@@ -17,6 +17,11 @@
   })();
 </script>
 <style>
+  body.no-ssi #btnProbe, body.no-ssi #btnRefresh, body.no-ssi #btnSync,
+  body.no-ssi #sesi, body.no-ssi #sweepRow, body.no-ssi #sweepHelp,
+  body.no-ssi #probeHelp { display: none; }
+  #ssiNotice { display: none; }
+  body.no-ssi #ssiNotice { display: block; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
@@ -259,6 +264,12 @@
       <div class="status-cell"><span class="k">Sinkronisasi terakhir</span><span class="v" id="stBatch">—</span><span class="s" id="stBatchSub"></span></div>
     </div>
     <div class="panel-body">
+      <p class="caption" id="ssiNotice">
+        Server ini tidak bisa menjangkau SSI: permintaan dari IP cloud dibalas <strong>403</strong>.
+        Tarik data dari PC puskesmas yang memakai jaringan kantor: jalankan <code>npm start</code> dengan
+        <code>DATABASE_URL</code> yang sama, masuk ke SSI di <code>localhost</code>, lalu klik
+        <strong>Tarik data SSI</strong> di sana. Dasbor ini membaca database yang sama.
+      </p>
       <div class="row">
         <button class="btn" id="btnProbe" type="button">Cek sesi sekarang</button>
         <button class="btn" id="btnRefresh" type="button">Perpanjang sesi</button>
@@ -266,7 +277,7 @@
         <!-- Disembunyikan sementara: rincian layanan butuh ±11 menit untuk 1.285 kunjungan.
              Endpoint /api/detail/fetch tetap ada; buka komentar tombol ini untuk mengaktifkan lagi. -->
       </div>
-      <div class="row" style="align-items:flex-end;margin-top:14px">
+      <div class="row" id="sweepRow" style="align-items:flex-end;margin-top:14px">
         <div class="field" style="flex:0 1 170px">
           <label for="sweepStart">Tarik data mulai</label>
           <input id="sweepStart" type="date" />
@@ -278,9 +289,9 @@
         <button class="btn" id="btnSweepSave" type="button">Simpan rentang</button>
         <span class="caption" id="sweepInfo">—</span>
       </div>
-      <p>Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
+      <p id="sweepHelp">Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
         Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
-      <p>Pemeriksaan sesi berjalan otomatis setiap halaman dibuka (sekali per menit). Tombol di atas untuk memaksa pemeriksaan saat Anda butuh.</p>
+      <p id="probeHelp">Pemeriksaan sesi berjalan otomatis setiap halaman dibuka (sekali per menit). Tombol di atas untuk memaksa pemeriksaan saat Anda butuh.</p>
     </div>
     <div class="log" id="log" role="log" aria-live="polite"></div>
   </section>
@@ -572,6 +583,8 @@ $('#btnSweepSave').addEventListener('click', async () => {
   }
 });
 
+let canFetchSsi = true;
+
 async function loadStatus() {
   const s = await (await apiFetch('/api/status')).json();
   $('#stVisits').textContent = fmt(s.visits);
@@ -580,6 +593,16 @@ async function loadStatus() {
   $('#stBatchSub').textContent = s.lastSyncFetched ? fmt(s.lastSyncFetched) + ' baris terakhir' : '';
   $('#meta').textContent = 'faskes ' + (s.faskesCode ?? '—');
   renderSweep(s);
+  // Instance yang tidak punya jalur ke SSI (Vercel: 403 dari IP cloud) tidak boleh
+  // menampilkan tombol yang pasti gagal; pengguna diberi tahu di mana menarik data.
+  canFetchSsi = s.ssiFetchAvailable !== false;
+  document.body.classList.toggle('no-ssi', !canFetchSsi);
+  if (!canFetchSsi) {
+    $('#stSession').textContent = 'di PC puskesmas';
+    $('#stSession').dataset.tone = 'warn';
+    $('#stSessionSub').textContent = 'SSI menolak koneksi dari server ini (403)';
+    return s;
+  }
   const need = !s.hasSession || Boolean(s.sessionError);
   $('#stSession').textContent = need ? 'tidak aktif' : 'aktif';
   $('#stSession').dataset.tone = need ? 'bad' : 'ok';
@@ -588,6 +611,7 @@ async function loadStatus() {
 }
 
 async function probe(force) {
+  if (!canFetchSsi) return { state: 'unavailable' };
   const btn = $('#btnProbe');
   busy(btn, true, 'Memeriksa…');
   try {
@@ -1343,7 +1367,7 @@ $('#btnLogout').addEventListener('click', async () => {
   try {
     await loadStatus();
     await probe(false);
-    if (location.hash === '#sesi') loadCaptcha();
+    if (canFetchSsi && location.hash === '#sesi') loadCaptcha();
   } catch (e) {
     log('gagal memuat status: ' + e.message, 'err');
   }
