@@ -85,6 +85,9 @@ export async function buildApp() {
     // Daftar batch dibaca halaman laporan publik (pemilih batch di header); isinya hanya
     // nama/periode. Perubahan batch tetap lewat metode tulis yang wajib admin.
     if (req.method === 'GET' && url === '/api/batches') return;
+    // Ingest punya autentikasinya sendiri (x-ingest-token), bukan cookie admin:
+    // pengirimnya mesin lokal tanpa login.
+    if (req.method === 'POST' && url === '/api/ingest/visits') return;
     if (!ADMIN_PATHS.some((p) => url === p || url.startsWith(p + '/'))) return;
     if (isAdmin(req)) return;
     reply.code(401).send({ error: 'Halaman admin terkunci.', locked: true });

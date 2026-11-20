@@ -14,7 +14,8 @@ export async function pushSnapshot(
 ): Promise<PushResult> {
   const base = target.replace(/\/+$/, '');
   const url = `${base}/api/ingest/visits`;
-  const size = opts.chunkSize ?? 2000;
+  // 500, bukan 2000: batas body Vercel 4,5 MB dan satu kunjungan ±2 KB JSON.
+  const size = opts.chunkSize ?? 500;
   let sent = 0;
   let chunks = 0;
 
