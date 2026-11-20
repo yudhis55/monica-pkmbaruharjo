@@ -9,6 +9,7 @@ import { guessMapping, importAssignments, writeAssignmentTemplate, MANUAL_REASON
 import { ensureFreshSession, probeSession, runSync } from '../core/sync.ts';
 import { runDetailFetch } from '../core/detailRun.ts';
 import { refreshSession } from '../core/ssi/session.ts';
+import { BASE_URL, REFERER, USER_AGENT } from '../core/ssi/http.ts';
 import { fetchCaptcha, submitLogin } from '../core/ssi/login.ts';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -77,7 +78,7 @@ export async function buildApp() {
   // Penandaan hasil dan unduhan daftar pasien (NIK penuh) kini hanya untuk admin:
   // menyembunyikan tombolnya saja tidak cukup, endpoint-nya harus menolak juga.
   const ADMIN_PATHS = ['/api/sync', '/api/detail', '/api/session', '/api/ingest', '/api/assign', '/api/batches',
-    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/settings'];
+    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/settings', '/api/diag'];
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url.split('?')[0];
     if (url === '/api/admin') return;
@@ -159,6 +160,36 @@ export async function buildApp() {
   });
 
   const needPassword = Boolean(passwordHash);
+  /**
+   * Diagnostik jalur SSI dari instance ini: status + sebagian header + potongan body.
+   * Dipakai saat sync gagal karena 403/502 — supaya jelas apakah penolakan datang dari
+   * WAF/geo (mis. IP datacenter Vercel) atau dari aplikasi SSI.
+   */
+  app.get('/api/diag/ssi', async () => {
+    const probe = async (path: string, headers: Record<string, string>) => {
+      const startedAt = Date.now();
+      try {
+        const r = await fetch(`${BASE_URL}${path}`, { headers, signal: AbortSignal.timeout(20_000) });
+        const body = await r.text();
+        const pick = ['server', 'content-type', 'cf-ray', 'cf-mitigated', 'x-vercel-id', 'location', 'set-cookie'];
+        const h: Record<string, string> = {};
+        for (const k of pick) { const v = r.headers.get(k); if (v) h[k] = k === 'set-cookie' ? '<ada>' : v; }
+        return { path, status: r.status, ms: Date.now() - startedAt, headers: h, body: body.slice(0, 300) };
+      } catch (e: any) {
+        return { path, error: `${e?.name ?? 'Error'}: ${e?.message ?? e}`, ms: Date.now() - startedAt };
+      }
+    };
+    const out = {
+      egress: { via: process.env.VERCEL ? 'vercel' : 'lokal', region: process.env.VERCEL_REGION ?? null },
+      now: new Date().toISOString(),
+      probes: [
+        await probe('/api/crypto-key', { accept: 'application/json', 'user-agent': USER_AGENT }),
+        await probe('/auth/login', { accept: 'text/html', 'user-agent': USER_AGENT, referer: REFERER }),
+      ],
+    };
+    return out;
+  });
+
   // Untuk healthcheck container/uptime monitor: tanpa auth, tanpa data pasien.
   app.get('/api/health', async (_req, reply) => {
     try {
