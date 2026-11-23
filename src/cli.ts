@@ -54,9 +54,11 @@ async function main() {
       // sweep dijalankan dari mesin lain (collector) terhadap DB yang sama.
       const owner = `cli:${process.pid}:${Math.random().toString(16).slice(2, 10)}`;
       if (!(await store.claimSync(owner))) { await store.close(); throw new Error('Sweep SSI sedang berjalan di proses lain.'); }
-      // Rentang dari pengaturan admin (DB) bila ada; env hanya cadangan.
-      const startDate = (await store.getSetting('sweep.start')) ?? CONFIG.sweepStart;
-      const endDate = (await store.getSetting('sweep.end')) ?? CONFIG.sweepEnd;
+      // Rentang: flag CLI > pengaturan admin (DB) > env. Flag dipakai untuk menyapu per bulan
+      // ketika rentang setahun membuat SSI membalas 500 (terukur 23 Nov 2026).
+      const startDate = flag('start') ?? (await store.getSetting('sweep.start')) ?? CONFIG.sweepStart;
+      const endDate = flag('end') ?? (await store.getSetting('sweep.end')) ?? CONFIG.sweepEnd;
+      console.log(`rentang ${startDate} s/d ${endDate}`);
       const runId = await store.startRun();
       try {
         await ensureFreshSession(store);
