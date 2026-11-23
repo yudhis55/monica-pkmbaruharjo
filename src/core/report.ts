@@ -286,8 +286,11 @@ export async function buildReport(store: Store, batchId?: number, year?: number 
     generatedAt: new Date().toISOString(),
     batchId: batch?.id ?? null,
     totals,
-    // Urut capaian (diinput + gagal), bukan sekadar jumlah input.
-    perPetugas: perPetugas.sort((a, b) => b.pctCapaian - a.pctCapaian || a.petugas.localeCompare(b.petugas)),
+    // Urut capaian (diinput + gagal), bukan sekadar jumlah input. Bila persentase sama,
+    // yang jumlah inputnya lebih banyak naik: 65 orang selesai mengalahkan 42 orang dengan
+    // persentase yang sama, baru setelah itu diurutkan menurut nama.
+    perPetugas: perPetugas.sort((a, b) =>
+      b.pctCapaian - a.pctCapaian || b.diinput - a.diinput || a.assigned - b.assigned || a.petugas.localeCompare(b.petugas)),
     rows: scoped,
     lastSyncAt: lastRun?.finished_at ?? null,
     visitCount: visits.length,

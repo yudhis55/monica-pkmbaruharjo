@@ -357,7 +357,7 @@
     body { font-size: 15px; }
     .topbar { padding: 10px var(--pad); flex-wrap: wrap; row-gap: 8px; gap: 8px; }
     .brand { flex: 1 1 100%; }
-    .topbar-right { flex: 1 1 100%; justify-content: flex-end; }
+    .topbar-right { flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; }
     .brand svg { width: 18px; height: 18px; }
     .icon-btn { width: 38px; height: 38px; }
     .nav-link { padding: 7px 11px; font-size: 14px; }
@@ -403,8 +403,9 @@
     .tbl-petugas th:nth-child(1)::before { content: "Petugas"; }
     .tbl-petugas th:nth-child(2)::before { content: "Tugas"; }
     .tbl-petugas th:nth-child(3)::before { content: "Sdh"; }
-    .tbl-petugas th:nth-child(4)::before { content: "Blm"; }
-    .tbl-petugas th:nth-child(5)::before { content: "%"; }
+    .tbl-petugas th:nth-child(4)::before { content: "Gagal"; }
+    .tbl-petugas th:nth-child(5)::before { content: "Blm"; }
+    .tbl-petugas th:nth-child(6)::before { content: "%"; }
     #perPetugas td { font-size: 14px; }
     #perPetugas .cell-name { font-size: 14px; max-width: none; }
     .tbl-petugas th:first-child, .tbl-petugas td:first-child { width: 32%; }
@@ -415,6 +416,23 @@
     #perPetugas th:last-child { text-align: right; }
     .hide-sm { display: none; }
     .footer-note { display: none; }
+  }
+  /* Di bawah 360px (mis. iPhone SE lama) tabel petugas meluber dan kolom capaian
+     terpotong; rapatkan padding dan lebarkan kolom nama sedikit. */
+  @media (max-width: 374px) {
+    /* `#perPetugas` adalah tbody: table-layout harus dipasang pada <table>-nya. */
+    .tbl-petugas { table-layout: fixed; }
+    #perPetugas th, #perPetugas td { padding: 9px 0; }
+    #perPetugas td { font-size: 12.5px; }
+    #perPetugas .cell-name { font-size: 12.5px; white-space: normal; overflow-wrap: anywhere; }
+    .tbl-petugas th::before { font-size: 9px; letter-spacing: 0; }
+    .tbl-petugas th:first-child, .tbl-petugas td:first-child { width: 31%; }
+    .tbl-petugas th:nth-child(2), .tbl-petugas td:nth-child(2),
+    .tbl-petugas th:nth-child(4), .tbl-petugas td:nth-child(4) { width: 15%; }
+    .tbl-petugas th:nth-child(3), .tbl-petugas td:nth-child(3),
+    .tbl-petugas th:nth-child(5), .tbl-petugas td:nth-child(5) { width: 11%; }
+    .tbl-petugas th:nth-child(6), .tbl-petugas td:nth-child(6) { width: 17%; }
+    .topbar-right { gap: 4px; }
   }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
