@@ -415,6 +415,13 @@ angka utama 64px, target sentuh tombol ≥44px, warna muted dibuat lebih gelap
 - **Lockout login**: SSI menolak percobaan beruntun (HTTP 501, "coba lagi 2 menit"). UI menampilkan pesannya apa adanya.
 - **Server SSI** mengembalikan 503 sesekali; klien retry dengan backoff eksponensial, dan rotasi kunci HPKE otomatis saat `ERROR_TOKEN_EXPIRED`.
 - `ctk` dari cookie di-URL-decode sebelum dipakai HPKE — tanpa itu `atob` gagal.
+- **Rentang setahun bisa 500, per bulan lolos.** 23 Nov 2026: `2026-01-01..2026-12-31` membalas `500 Gagal memuat data` setelah ±2 menit, termasuk untuk `limit=10`; per bulan, Januari dan Februari tetap 500 tetapi Maret–November lolos. Kalau sapuan setahun gagal, pecah per bulan:
+  ```powershell
+  foreach ($m in 3..12) {
+    node src/cli.ts sync --start ("2026-{0:d2}-01" -f $m) --end ("2026-{0:d2}-31" -f $m)
+  }
+  ```
+  Tiap rentang punya cursor sendiri (`sweep.range`), jadi bulan yang gagal tidak menghalangi bulan lain dan bisa diulang belakangan.
 
 ## Tes
 
