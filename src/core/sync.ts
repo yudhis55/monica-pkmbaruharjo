@@ -102,6 +102,34 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
   let page = savedPage > 1 ? savedPage : 1;
   let totalPage = savedPage > 1 ? savedTotal : 0;
   let usedLimit = savedPage > 1 && savedLimit > 0 ? savedLimit : limitTry[0];
+  // Kalau halaman lanjutan tetap 500 setelah percobaan ulang, limit diturunkan dan nomor
+  // halaman dipetakan ulang menurut offset, bukan diulang dari halaman 1: daftar SSI adalah
+  // irisan berurutan, jadi offset 3.000 dengan limit 500 = halaman 7. Tanpa pemetaan ini,
+  // rentang 2026 butuh 21 menit karena halaman yang sudah tersimpan ditarik lagi.
+  const MIN_LIMIT = 250;
+  let shrinks = 0;
+
+  /**
+   * Halaman lanjutan kadang dibalas 500 "Gagal memuat data" (terukur 23 Nov 2026: halaman
+   * 2 dari rentang 2026 gagal sekali, lalu lolos saat diulang). Percobaan ulang di sini,
+   * bukan di pemanggil, supaya CLI dan HTTP memakai perilaku sama.
+   */
+  async function fetchPage(p: number, limit: number): Promise<any> {
+    let lastErr: any;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await listKunjunganUmum({ ...common, page: p, limit }, auth, hooks);
+      } catch (e: any) {
+        lastErr = e;
+        if (e?.status && e.status < 500) throw e; // 401/403/400: mengulang tidak menolong
+        // 23 Nov 2026: data endpoint membalas 500/503 setelah ±2 menit menggantung. Jeda
+        // pendek hanya menambah beban, jadi 5 dtk lalu 20 dtk.
+        if (attempt === 1) await new Promise((r) => setTimeout(r, 5_000));
+        if (attempt === 2) await new Promise((r) => setTimeout(r, 20_000));
+      }
+    }
+    throw lastErr;
+  }
 
   const all: SsiVisit[] = [];
   let fetched = 0, inserted = 0, updated = 0, unchanged = 0, pagesDone = 0;
@@ -144,7 +172,24 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
         totalPage = Number(first?.data?.meta?.total_page ?? 1);
         await keep(first?.data?.list ?? [], 1);
       } else {
-        const r = await listKunjunganUmum({ ...common, page, limit: usedLimit }, auth, hooks);
+        let r: any;
+        try {
+          r = await fetchPage(page, usedLimit);
+        } catch (e: any) {
+          const shrunk = usedLimit / 2;
+          if ((!e?.status || e.status >= 500) && shrunk >= MIN_LIMIT && shrinks < 2) {
+            const offset = (page - 1) * usedLimit;
+            shrinks++;
+            usedLimit = shrunk;
+            page = offset / usedLimit + 1;
+            totalPage = 0;
+            await saveCursor(page);
+            continue;
+          }
+          throw e;
+        }
+        const tp = Number(r?.data?.meta?.total_page ?? 0);
+        if (tp > 0) totalPage = tp;
         await keep(r?.data?.list ?? [], page);
       }
 
