@@ -209,7 +209,14 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
       await store.setSessionError(e.message);
       return { ok: false, done: false, fetched, pages: pagesDone, inserted, updated, unchanged, sessionExpired: true, message: e.message };
     }
-    return { ok: false, done: false, fetched, pages: pagesDone, inserted, updated, unchanged, message: String(e?.message ?? e) };
+    const raw = String(e?.message ?? e);
+    const spanDays = (Date.parse(opts.endDate) - Date.parse(opts.startDate)) / 86_400_000;
+    const hint = !e?.status || e.status >= 500
+      ? spanDays > 31
+        ? ' — rentang lebar gagal; pecah per bulan: sync --start 2026-03-01 --end 2026-03-31'
+        : ' — SSI sedang gagal untuk rentang ini; ulangi nanti'
+      : '';
+    return { ok: false, done: false, fetched, pages: pagesDone, inserted, updated, unchanged, message: raw + hint };
   }
 
   let pushed: { ok: boolean; sent: number; message?: string } | undefined;
