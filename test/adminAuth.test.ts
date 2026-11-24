@@ -17,7 +17,10 @@ test('mengubah masa berlaku membatalkan tanda tangan', () => {
   const [, exp, mac] = token.split('.');
   assert.equal(verifyAdminToken(key, `v1.${Number(exp) + 3600_000}.${mac}`, now), false);
   assert.equal(verifyAdminToken(key, token, now), true);
-  assert.equal(verifyAdminToken(key, `v1.${exp}.${mac.slice(0, -1)}A`, now), false);
+  // Karakter terakhir base64url hanya menyumbang 2 bit dari 32 byte, jadi mengubahnya
+  // bisa menghasilkan byte MAC yang sama. Ubah karakter pertama agar benar-benar berbeda.
+  const flipped = (mac[0] === 'A' ? 'B' : 'A') + mac.slice(1);
+  assert.equal(verifyAdminToken(key, `v1.${exp}.${flipped}`, now), false);
 });
 
 test('sandi lain menghasilkan kunci lain', () => {

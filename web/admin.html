@@ -410,6 +410,17 @@
           <a class="btn" href="/api/report.xlsx">Unduh Excel laporan</a>
           <a class="btn" href="/api/report.pdf">Unduh PDF capaian petugas</a>
         </div>
+        <p style="margin-top:14px">Data mentah SSI: <strong>seluruh kunjungan</strong> yang tersimpan,
+          termasuk pasien yang belum masuk Excel penugasan. NIK ditulis penuh, jadi berkas ini
+          untuk pemeriksaan internal.</p>
+        <div class="row" style="align-items:flex-end">
+          <div class="field" style="flex:0 1 110px">
+            <label for="visitsYear">Tahun</label>
+            <input id="visitsYear" inputmode="numeric" maxlength="4" placeholder="semua" />
+          </div>
+          <a class="btn" id="btnVisits" href="/api/visits.xlsx">Unduh data mentah SSI</a>
+          <span class="caption" id="visitsInfo">semua tahun</span>
+        </div>
       </div>
     </section>
   </div>
@@ -584,6 +595,15 @@ $('#btnSweepSave').addEventListener('click', async () => {
 });
 
 let canFetchSsi = true;
+
+/** Ekspor data mentah SSI: tahun kosong berarti seluruh kunjungan. */
+function syncVisitsLink() {
+  const v = $('#visitsYear').value.trim();
+  const valid = /^\d{4}$/.test(v);
+  $('#btnVisits').href = '/api/visits.xlsx' + (valid ? '?year=' + v : '');
+  $('#visitsInfo').textContent = valid ? 'hanya ' + v : 'semua tahun';
+}
+$('#visitsYear').addEventListener('input', syncVisitsLink);
 
 async function loadStatus() {
   const s = await (await apiFetch('/api/status')).json();

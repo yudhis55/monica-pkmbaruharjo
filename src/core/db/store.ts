@@ -40,6 +40,16 @@ export interface VisitRow {
   is_complete: number;
 }
 
+/** Baris tabel `visit` apa adanya, termasuk kolom yang tidak dipakai pencocokan. */
+export interface VisitExportRow extends VisitRow {
+  faskes_name: string | null;
+  attend_date: string | null;
+  finished_date: string | null;
+  visit_register_date: string | null;
+  started_date: string | null;
+  content_hash: string | null;
+}
+
 export interface AssignmentRow {
   id: number;
   batch_id: number;
@@ -288,6 +298,23 @@ export class Store {
     return this.db.prepare(`SELECT reg_id, nik, name_raw, name_norm, birth_date, gender, faskes_code, ticket_number,
       register_date, self_check_status, screening_count_all, screening_count_done, done_date,
       first_seen_at, last_seen_at, is_complete FROM visit`).all<VisitRow>();
+  }
+
+  /**
+   * Seluruh kunjungan SSI, bukan hanya yang tercocok ke penugasan. Tahun mengikuti
+   * `register_date` — kolom yang sama yang dipakai `yearOf` saat mencocokkan.
+   */
+  async visitsForExport(year: number | null): Promise<VisitExportRow[]> {
+    const cols = `reg_id, nik, name_raw, name_norm, birth_date, gender, faskes_code, faskes_name,
+      ticket_number, register_date, self_check_status, screening_count_all, screening_count_done,
+      attend_date, done_date, finished_date, visit_register_date, started_date, is_complete,
+      first_seen_at, last_seen_at, content_hash`;
+    if (year) {
+      return this.db.prepare(
+        `SELECT ${cols} FROM visit WHERE substr(register_date, 1, 4) = ? ORDER BY register_date, name_raw`,
+      ).all<VisitExportRow>([String(year)]);
+    }
+    return this.db.prepare(`SELECT ${cols} FROM visit ORDER BY register_date, name_raw`).all<VisitExportRow>();
   }
 
   async visitCount(): Promise<number> {

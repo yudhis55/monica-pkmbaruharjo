@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import { CONFIG } from '../config.ts';
 import { Store, flagKey } from '../core/db/store.ts';
 import { BUCKET_LABEL, bucketOf, buildReport, exportPatientsToExcel, exportReportToExcel, staleSubmissions, type Bucket, type Report } from '../core/report.ts';
+import { exportVisitsToExcel } from '../core/visitsExport.ts';
 import { MATCH_RULES, resolveMatchRule } from '../core/verdict.ts';
 import { BULK_FLAG_REASONS, BULK_REASON_LABEL, applyBulkFlags, parseBulkFlagFile, writeBulkFlagTemplate } from '../core/bulkFlags.ts';
 import { buildCapaianPdf, PDF_MAX_ROWS } from '../core/pdfCapaian.ts';
@@ -78,7 +79,7 @@ export async function buildApp() {
   // Penandaan hasil dan unduhan daftar pasien (NIK penuh) kini hanya untuk admin:
   // menyembunyikan tombolnya saja tidak cukup, endpoint-nya harus menolak juga.
   const ADMIN_PATHS = ['/api/sync', '/api/detail', '/api/session', '/api/ingest', '/api/assign', '/api/batches',
-    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/settings', '/api/diag'];
+    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/visits.xlsx', '/api/settings', '/api/diag'];
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url.split('?')[0];
     if (url === '/api/admin') return;
@@ -392,6 +393,23 @@ export async function buildApp() {
     if (petugas) parts.push(safe(petugas));
     if (status) parts.push(safe(status.toLowerCase()));
     reply.header('content-disposition', `attachment; filename="${parts.join('-')}.xlsx"`);
+    return reply.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(readFileSync(out));
+  });
+
+  /**
+   * Data mentah SSI: seluruh kunjungan yang tersimpan, bukan hanya pasien yang dibagi ke
+   * petugas. NIK ditulis penuh; berkas ini admin-only karena memuat identitas pasien.
+   */
+  app.get('/api/visits.xlsx', async (req, reply) => {
+    const q = req.query as any;
+    const raw = String(q.year ?? '').trim();
+    if (raw && !/^\d{4}$/.test(raw)) return reply.code(400).send({ error: 'Parameter year harus 4 angka, mis. 2026.' });
+    const year = raw ? Number(raw) : null;
+    const [rows, run] = await Promise.all([store.visitsForExport(year), store.lastRun()]);
+    const dir = mkdtempSync(join(tmpdir(), 'monev-'));
+    const out = join(dir, 'ssi.xlsx');
+    await exportVisitsToExcel(rows, { year, syncedAt: run?.finished_at ?? null }, out);
+    reply.header('content-disposition', `attachment; filename="data-ssi-${year ?? 'semua'}.xlsx"`);
     return reply.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').send(readFileSync(out));
   });
 
