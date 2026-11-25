@@ -101,7 +101,14 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
   const limitTry = [...new Set([pageSize, 2000, 1000])].filter((n) => n <= MAX_PAGE_LIMIT);
   let page = savedPage > 1 ? savedPage : 1;
   let totalPage = savedPage > 1 ? savedTotal : 0;
-  let usedLimit = savedPage > 1 && savedLimit > 0 ? savedLimit : limitTry[0];
+  // `limit` tersimpan hanya dipakai bila masih sama dengan yang diminta pemanggil. Mode
+  // proxy menurunkan pageSize (500); memakai limit lama (2.000) membuat halaman lanjutan
+  // terlalu besar dan melewati batas waktu fungsi. Offset tetap dijaga saat memetakan ulang.
+  let usedLimit = savedPage > 1 && savedLimit > 0 && savedLimit === limitTry[0] ? savedLimit : limitTry[0];
+  if (savedPage > 1 && savedLimit > 0 && savedLimit !== usedLimit) {
+    const offset = (savedPage - 1) * savedLimit;
+    page = Math.floor(offset / usedLimit) + 1;
+  }
   // Kalau halaman lanjutan tetap 500 setelah percobaan ulang, limit diturunkan dan nomor
   // halaman dipetakan ulang menurut offset, bukan diulang dari halaman 1: daftar SSI adalah
   // irisan berurutan, jadi offset 3.000 dengan limit 500 = halaman 7. Tanpa pemetaan ini,
