@@ -11,7 +11,7 @@ import { ensureFreshSession, probeSession, runSync } from '../core/sync.ts';
 import { runDetailFetch } from '../core/detailRun.ts';
 import { refreshSession } from '../core/ssi/session.ts';
 import { BASE_URL, REFERER, USER_AGENT } from '../core/ssi/http.ts';
-import { fetchProxyList, requestThroughProxy } from '../core/ssi/proxyFetch.ts';
+import { fetchProxyList, openProxySession, requestThroughProxy } from '../core/ssi/proxyFetch.ts';
 import { encryptPayload, setClientKey } from '../core/ssi/crypto.ts';
 import { fetchCaptcha, submitLogin } from '../core/ssi/login.ts';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -206,6 +206,9 @@ export async function buildApp() {
     const q = req.query as any;
     const count = Math.min(Math.max(Number(q.n ?? 8), 1), 15);
     const wantData = String(q.data ?? '') === '1';
+    // 'single': satu tunnel dipakai ulang untuk GET+POST (proxy gratis sering menolak
+    // koneksi kedua dari IP yang sama). 'new': koneksi baru per request.
+    const mode = String(q.mode ?? 'new');
     const country = String(q.country ?? 'id');
     const budgetMs = Math.min(Math.max(Number(q.budget ?? 240_000), 30_000), 280_000);
     const started = Date.now();
@@ -218,11 +221,16 @@ export async function buildApp() {
     }
 
     const tried: any[] = [];
+    const host = new URL(BASE_URL).host;
     for (const proxy of list.slice(0, count)) {
       if (Date.now() - started > budgetMs) break;
       const row: any = { proxy };
+      const session = mode === 'single' ? await openProxySession(proxy, host).catch(() => null) : null;
       try {
-        const ck = await requestThroughProxy(proxy, 'sehatindonesiaku.kemkes.go.id', {
+        const call = (o: { method: 'GET' | 'POST'; path: string; headers: Record<string, string>; body?: string; timeoutMs?: number }) =>
+          session ? session.request(o) : requestThroughProxy(proxy, host, o);
+
+        const ck = await call({
           method: 'GET', path: '/api/crypto-key',
           headers: { accept: 'application/json', 'user-agent': USER_AGENT },
           timeoutMs: 12_000,
@@ -247,7 +255,7 @@ export async function buildApp() {
             screening_start_date: '2026-11-01', screening_end_date: '2026-11-30',
             partner_code: '', ticket_number: '', patient_nik: '', patient_name: '', status: '',
           });
-          const post = await requestThroughProxy(proxy, 'sehatindonesiaku.kemkes.go.id', {
+          const post = await call({
             method: 'POST', path: '/api/pkg/ssi/list-kunjungan-umum',
             headers: {
               accept: 'application/json', 'content-type': 'application/json',
@@ -263,6 +271,8 @@ export async function buildApp() {
         }
       } catch (e: any) {
         row.error = e?.message ?? String(e);
+      } finally {
+        session?.close();
       }
       tried.push(row);
     }
