@@ -436,8 +436,12 @@ angka utama 64px, target sentuh tombol ≥44px, warna muted dibuat lebih gelap
 
 ## Catatan operasional
 
-- **Kunci sweep lintas-proses**: tabel `sync_lock` menyimpan `pid` + `host`. Kunci pemilik yang sudah mati diambil alih otomatis, jadi server yang di-restart di tengah sweep tidak memblokir 10 menit.
-- **Run yatim** (`status='running'` dari proses mati) ditutup sebagai `interrupted` saat server start.
+- **Kunci sweep**: lease **2 menit** yang diperbarui tiap halaman. Di serverless `finally`
+  tidak selalu jalan (fungsi dibunuh saat kehabisan waktu), jadi kunci tidak bisa diandalkan
+  untuk dilepas; lease pendek membuat pemilik mati cepat digantikan. Ambil-alih memakai
+  `expires_at`, bukan `pid`/`host` yang tidak bermakna di serverless.
+- **Run yatim**: run `status='running'` yang lebih tua dari 5 menit ditutup sebagai
+  `interrupted` **sebelum** kunci diambil, supaya run baru tidak ikut tertandai.
 - **Refresh sesi** berjalan di dalam `BEGIN IMMEDIATE` + `busy_timeout`, sehingga CLI dan web tidak pernah memakai `refresh_token` yang sama dua kali.
 - **Rantai refresh**: timer tiap 1 jam memperpanjang sesi yang berumur > 6 jam, di dalam kunci tulis DB. Kegagalan refresh dicatat sebagai `session_error` dan tidak membatalkan sapuan.
 - **Login tidak memblokir**: hanya form yang ditawarkan; sapuan tetap boleh dijalankan.
