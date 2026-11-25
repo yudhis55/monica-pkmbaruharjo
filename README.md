@@ -53,9 +53,11 @@ Batasan yang perlu diketahui:
 - Terukur 25 Nov 2026 dari prod (Vercel, lewat proxy): 2026 penuh selesai 12 panggilan,
   tiap bulan 0,3–106 dtk; total 8.094 baris. Satu bulan bisa gagal (proxy mati) dan
   diulang tanpa kehilangan bulan lain karena progresnya tersimpan.
-- Proxy **tidak dipakai untuk login**: captcha 4 karakter tetap harus diketik manusia, dan
-  kata sandi tidak boleh melewati server orang lain. Login sekali dari PC puskesmas; token
-  tersimpan di tabel `session` dan dipakai prod untuk membaca.
+- **Login tetap bisa dilakukan dari prod.** Form login ada di admin; captcha dan POST login
+  dijalankan lewat proxy yang sama. Kata sandi tidak terbaca proxy: isinya byte TLS
+  terenkripsi end-to-end dan klien menolak sertifikat yang tidak valid (MITM akan gagal).
+  Yang tetap tidak bisa diotomatiskan hanyalah **membaca captcha** — 4 karakter, harus
+  diketik manusia sekali per sesi.
 - Endpoint baca SSI hanya memeriksa keberadaan cookie, jadi uji proxy memakai token
   karangan — kredensial asli tidak pernah dikirim ke proxy.
 
