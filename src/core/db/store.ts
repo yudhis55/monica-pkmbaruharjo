@@ -837,6 +837,19 @@ export class Store {
     return Number(r.changes ?? 0);
   }
 
+  /**
+   * Tutup run 'running' yang sudah lebih tua dari `olderThanMs`. Dipakai sebelum mengambil
+   * kunci sync: fungsi serverless yang kehabisan waktu meninggalkan run menggantung, tetapi
+   * run yang baru dimulai proses lain tidak boleh ikut ditutup.
+   */
+  async recoverStaleRuns(olderThanMs: number): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanMs).toISOString();
+    const r = await this.db.prepare(
+      `UPDATE sync_run SET status = 'interrupted', finished_at = ? WHERE status = 'running' AND started_at < ?`,
+    ).run([new Date().toISOString(), cutoff]);
+    return Number(r.changes ?? 0);
+  }
+
   /** Tutup run yang tertinggal 'running' oleh proses yang sudah mati. */
   async recoverInterrupted(): Promise<number> {
     const r = await this.db

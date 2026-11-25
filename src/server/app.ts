@@ -1004,14 +1004,15 @@ export async function buildApp() {
     // menentukan lock bebas, bukan pemeriksaan proses.
     const owner = `web:${process.pid}:${randomBytes(4).toString('hex')}`;
     const { startDate, endDate } = await sweepRange();
+    // Sebelum mengambil kunci: tutup run 'running' yang pemiliknya sudah mati (mis. fungsi
+    // serverless kehabisan waktu). Dilakukan SEBELUM startRun supaya run baru tidak ikut
+    // tertandai, dan hanya menyentuh run yang lebih tua dari 5 menit.
+    await store.recoverStaleRuns(5 * 60_000);
     if (syncing || !(await store.claimSync(owner))) return reply.code(409).send({ error: 'Sweep SSI sedang berjalan di proses lain.' });
     syncing = true;
     const runId = await store.startRun();
     let viaProxy: string | null = null;
     try {
-      // Run 'running' dari proses yang sudah mati (mis. fungsi serverless kehabisan waktu)
-      // tidak boleh menahan kunci atau mengotori riwayat.
-      await store.recoverInterrupted();
       // Di instance tanpa jalur langsung ke SSI (Vercel: 403 dari IP cloud), sync hanya
       // mungkin lewat proxy Indonesia. Proxy dipilih dan diganti oleh runWithProxy; cursor
       // sweep di DB membuat percobaan ulang melanjutkan halaman yang sama, bukan mengulang.
