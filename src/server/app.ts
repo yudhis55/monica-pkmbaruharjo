@@ -11,6 +11,8 @@ import { ensureFreshSession, probeSession, runSync } from '../core/sync.ts';
 import { runDetailFetch } from '../core/detailRun.ts';
 import { refreshSession } from '../core/ssi/session.ts';
 import { BASE_URL, REFERER, USER_AGENT } from '../core/ssi/http.ts';
+import { fetchProxyList, requestThroughProxy } from '../core/ssi/proxyFetch.ts';
+import { encryptPayload, setClientKey } from '../core/ssi/crypto.ts';
 import { fetchCaptcha, submitLogin } from '../core/ssi/login.ts';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -192,6 +194,79 @@ export async function buildApp() {
       ],
     };
     return out;
+  });
+
+  /**
+   * Diagnostik egress lewat proxy gratis (proxyscrape) — menjawab pertanyaan "bisa tidak
+   * instance ini menarik SSI lewat proxy Indonesia". Hanya membaca `/api/crypto-key`; bila
+   * `data=1`, satu halaman kecil diminta dengan token karangan (endpoint baca SSI hanya
+   * memeriksa keberadaan cookie), jadi kredensial nyata tidak pernah dikirim ke proxy.
+   */
+  app.get('/api/diag/proxy', async (req) => {
+    const q = req.query as any;
+    const count = Math.min(Math.max(Number(q.n ?? 8), 1), 15);
+    const wantData = String(q.data ?? '') === '1';
+    const country = String(q.country ?? 'id');
+    const budgetMs = Math.min(Math.max(Number(q.budget ?? 240_000), 30_000), 280_000);
+    const started = Date.now();
+
+    let list: string[] = [];
+    try {
+      list = await fetchProxyList(country);
+    } catch (e: any) {
+      return { error: `daftar proxy gagal: ${e?.message ?? e}`, listSize: 0, tried: [] };
+    }
+
+    const tried: any[] = [];
+    for (const proxy of list.slice(0, count)) {
+      if (Date.now() - started > budgetMs) break;
+      const row: any = { proxy };
+      try {
+        const ck = await requestThroughProxy(proxy, 'sehatindonesiaku.kemkes.go.id', {
+          method: 'GET', path: '/api/crypto-key',
+          headers: { accept: 'application/json', 'user-agent': USER_AGENT },
+          timeoutMs: 12_000,
+        });
+        row.cryptoKey = { status: ck.status, ms: ck.ms };
+        if (ck.status !== 200) { tried.push(row); continue; }
+
+        // Ambil stk/ctk dari seluruh baris Set-Cookie respons crypto-key lewat proxy.
+        const jar: Record<string, string> = {};
+        for (const line of ck.setCookies) {
+          const first = line.split(';')[0];
+          const i = first.indexOf('=');
+          if (i > 0) jar[first.slice(0, i).trim()] = first.slice(i + 1).trim();
+        }
+        row.cookies = Object.keys(jar);
+
+        if (wantData && jar.asik_web_stk && jar.asik_web_ctk) {
+          setClientKey(decodeURIComponent(jar.asik_web_ctk));
+          const enc = await encryptPayload({
+            user: { user_id: '', fullname: '', faskes_code: CONFIG.faskesCode, partner_code: '', partner_category_code: '' },
+            page: 1, limit: 3, faskes_code: CONFIG.faskesCode,
+            screening_start_date: '2026-11-01', screening_end_date: '2026-11-30',
+            partner_code: '', ticket_number: '', patient_nik: '', patient_name: '', status: '',
+          });
+          const post = await requestThroughProxy(proxy, 'sehatindonesiaku.kemkes.go.id', {
+            method: 'POST', path: '/api/pkg/ssi/list-kunjungan-umum',
+            headers: {
+              accept: 'application/json', 'content-type': 'application/json',
+              origin: BASE_URL, referer: REFERER, 'user-agent': USER_AGENT,
+              // Token karangan: cukup untuk membuktikan jalur baca, tanpa kredensial asli.
+              cookie: `token_eksternal=${'x'.repeat(128)}; asik_web_stk=${jar.asik_web_stk}; asik_web_ctk=${jar.asik_web_ctk}`,
+            },
+            body: JSON.stringify({ _d: enc }),
+            timeoutMs: 25_000,
+          });
+          const trimmed = post.body.trim();
+          row.data = { status: post.status, ms: post.ms, bodyPreview: trimmed.slice(0, 120) };
+        }
+      } catch (e: any) {
+        row.error = e?.message ?? String(e);
+      }
+      tried.push(row);
+    }
+    return { country, listSize: list.length, egress: process.env.VERCEL ? 'vercel' : 'lokal', elapsedMs: Date.now() - started, tried };
   });
 
   // Untuk healthcheck container/uptime monitor: tanpa auth, tanpa data pasien.
