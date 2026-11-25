@@ -682,7 +682,13 @@ export class Store {
    * dan tanpa `pid`, jadi perilakunya sama di SQLite maupun Postgres (serverless).
    * `owner` harus unik per proses/instance (mis. `web:<uuid>`), bukan sekadar nama peran.
    */
-  async claimSync(owner: string, leaseMs = 10 * 60_000): Promise<boolean> {
+  /**
+   * Lease sengaja pendek (2 menit) karena diperbarui tiap halaman lewat `renewSync`.
+   * Di serverless `finally` tidak selalu jalan (fungsi dibunuh saat kehabisan waktu), jadi
+   * kunci lama tidak bisa diandalkan untuk dilepas — lease pendek membuat pemilik mati
+   * cepat digantikan, tanpa menunggu 10 menit.
+   */
+  async claimSync(owner: string, leaseMs = 2 * 60_000): Promise<boolean> {
     const now = new Date();
     const expires = new Date(now.getTime() + leaseMs).toISOString();
     const pid = Number(owner.split(':')[1]);
@@ -707,9 +713,18 @@ export class Store {
    * (compare-and-swap), jadi dua pengambil tidak bisa menang bersamaan.
    */
   private async takeOverDeadSync(owner: string, startedAt: string, expiresAt: string): Promise<boolean> {
-    const row = await this.db.prepare('SELECT owner, pid, host FROM sync_lock WHERE id = 1')
-      .get<{ owner: string; pid: number | null; host: string | null }>();
+    const row = await this.db.prepare('SELECT owner, pid, host, expires_at FROM sync_lock WHERE id = 1')
+      .get<{ owner: string; pid: number | null; host: string | null; expires_at: string | null }>();
     if (!row) return false;
+    // Lease habis = pemiliknya sudah tidak memperbarui (proses mati / fungsi dibunuh).
+    // Ini jalur utama di serverless: pid dan host tidak bisa dipercaya di sana.
+    if (!row.expires_at || row.expires_at <= new Date().toISOString()) {
+      const res = await this.db.prepare(`UPDATE sync_lock SET owner = ?, pid = ?, host = ?, started_at = ?, expires_at = ?
+                                    WHERE id = 1 AND owner = ? AND (expires_at IS NULL OR expires_at <= ?)`)
+        .run([owner, Number(owner.split(':')[1]) || null, hostname(), startedAt, expiresAt, String(row.owner), new Date().toISOString()]);
+      if (Number(res.changes ?? 0) > 0) return true;
+      return false;
+    }
     if (row.host && row.host !== hostname()) return false;
     const pid = Number(row.pid);
     if (Number.isFinite(pid) && isAlive(pid)) return false;
@@ -721,7 +736,7 @@ export class Store {
   }
 
   /** Perpanjang lease selama sweep berjalan (dipanggil per halaman). */
-  async renewSync(owner: string, leaseMs = 10 * 60_000): Promise<boolean> {
+  async renewSync(owner: string, leaseMs = 2 * 60_000): Promise<boolean> {
     const expires = new Date(Date.now() + leaseMs).toISOString();
     const res = await this.db.prepare('UPDATE sync_lock SET expires_at = ? WHERE id = 1 AND owner = ?').run([expires, owner]);
     return Number(res.changes ?? 0) > 0;
