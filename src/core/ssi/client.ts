@@ -29,7 +29,7 @@ export class SsiSessionError extends Error {
   }
 }
 
-export async function fetchCryptoPair(timeoutMs = 30_000): Promise<{ stk: string; ctk: string }> {
+export async function fetchCryptoPair(timeoutMs = 30_000, attempts = 5): Promise<{ stk: string; ctk: string }> {
   const res = await withRetry('crypto-key', async () => {
     // Lewat transport, bukan fetch langsung: di Vercel jalur ini harus memakai proxy.
     const r = await getTransport().request('/api/crypto-key', {
@@ -45,7 +45,7 @@ export async function fetchCryptoPair(timeoutMs = 30_000): Promise<{ stk: string
       if (i > 0) jar[first.slice(0, i).trim()] = first.slice(i + 1).trim();
     }
     return jar;
-  });
+  }, { attempts });
   if (!res.asik_web_stk || !res.asik_web_ctk) throw new Error('crypto-key: cookie stk/ctk tidak diterbitkan');
   // Nilai cookie ctk di-URL-encode server; HPKE butuh base64 mentah.
   return { stk: res.asik_web_stk, ctk: safeDecode(res.asik_web_ctk) };
@@ -94,6 +94,12 @@ function classify(status: number, body: any): never {
 export interface SsiPostOptions {
   timeoutMs?: number;
   referer?: string;
+  /**
+   * Jumlah percobaan untuk galat jaringan/5xx. Mode proxy memakai 2: proxy gratis yang
+   * buruk harus cepat dinyatakan gagal supaya failover sempat terjadi di dalam batas
+   * waktu fungsi serverless.
+   */
+  attempts?: number;
   /** Dipanggil bila server meminta payload terenkripsi ulang (key kedaluwarsa). */
   onKeyExpired?: () => Promise<{ stk: string; ctk: string }>;
 }
@@ -158,7 +164,7 @@ export async function ssiPost<T = any>(
       }
       throw err;
     }
-  });
+  }, { attempts: options.attempts ?? 5 });
 }
 
 export interface ListArgs {

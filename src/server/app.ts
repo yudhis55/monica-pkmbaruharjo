@@ -1034,6 +1034,10 @@ export async function buildApp() {
           startDate,
           endDate,
           pageSize,
+          // Lewat proxy: 2 percobaan, 45 dtk per request. Proxy buruk harus cepat gugur
+          // supaya runWithProxy sempat berpindah ke kandidat berikutnya.
+          attempts: proxyMode ? 2 : undefined,
+          requestTimeoutMs: proxyMode ? 45_000 : undefined,
           userId: CONFIG.userId,
           fullname: CONFIG.fullname,
           partnerCode: CONFIG.partnerCode,

@@ -20,6 +20,10 @@ export interface SyncOptions {
    * sisa halaman dilanjutkan lewat cursor `sweep.page` di panggilan berikutnya.
    */
   maxPages?: number;
+  /** Percobaan ulang per request SSI (default 5; mode proxy 2). */
+  attempts?: number;
+  /** Batas waktu satu request SSI (default 120 dtk; mode proxy 45 dtk). */
+  requestTimeoutMs?: number;
   /**
    * Anggaran waktu per pemanggilan. Halaman baru tidak dimulai bila sudah lewat batas,
    * sehingga satu request serverless (maks 300 detik) tidak dipotong di tengah halaman.
@@ -64,8 +68,13 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
   const pageSize = Math.min(opts.pageSize ?? MAX_PAGE_LIMIT, MAX_PAGE_LIMIT);
   const started = Date.now();
 
+  // Mode proxy: percobaan lebih sedikit dan batas waktu lebih pendek, supaya satu proxy
+  // buruk tidak menghabiskan seluruh anggaran waktu fungsi sebelum failover.
+  const attempts = opts.attempts ?? 5;
+  const reqTimeoutMs = opts.requestTimeoutMs;
+
   async function makeAuth() {
-    const pair = await fetchCryptoPair();
+    const pair = await fetchCryptoPair(reqTimeoutMs ?? 30_000, attempts);
     return buildAuth(session?.tokenEksternal ?? '', pair);
   }
 
@@ -82,7 +91,7 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
     screeningStartDate: opts.startDate,
     screeningEndDate: opts.endDate,
   };
-  const hooks = { onKeyExpired: () => fetchCryptoPair() };
+  const hooks = { onKeyExpired: () => fetchCryptoPair(reqTimeoutMs ?? 30_000, attempts) };
 
   // Sweep bisa dipecah lintas request (serverless: satu request maksimum 300 detik,
   // sedangkan sapuan penuh bisa 6+ menit). Cursor disimpan di app_setting; rentang
@@ -125,7 +134,7 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
     let lastErr: any;
     for (let attempt = 1; attempt <= 3; attempt++) {
       try {
-        return await listKunjunganUmum({ ...common, page: p, limit }, auth, hooks);
+        return await listKunjunganUmum({ ...common, page: p, limit }, auth, { ...hooks, attempts, timeoutMs: reqTimeoutMs });
       } catch (e: any) {
         lastErr = e;
         if (e?.status && e.status < 500) throw e; // 401/403/400: mengulang tidak menolong
@@ -164,7 +173,7 @@ export async function runSync(store: Store, opts: SyncOptions): Promise<SyncResu
         let first: any;
         for (const limit of limitTry) {
           try {
-            first = await listKunjunganUmum({ ...common, page: 1, limit }, auth, hooks);
+            first = await listKunjunganUmum({ ...common, page: 1, limit }, auth, { ...hooks, attempts, timeoutMs: reqTimeoutMs });
             usedLimit = limit;
             break;
           } catch (e: any) {
