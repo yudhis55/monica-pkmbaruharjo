@@ -3,7 +3,8 @@ import { CONFIG } from '../config.ts';
 import { Store, flagKey } from '../core/db/store.ts';
 import { BUCKET_LABEL, bucketOf, buildReport, exportPatientsToExcel, exportReportToExcel, staleSubmissions, type Bucket, type Report } from '../core/report.ts';
 import { exportVisitsToExcel } from '../core/visitsExport.ts';
-import { MATCH_RULES, resolveMatchRule } from '../core/verdict.ts';
+import { MATCH_RULES, resolveMatchRule, yearOf } from '../core/verdict.ts';
+import { normalizeNik } from '../core/normalize.ts';
 import { BULK_FLAG_REASONS, BULK_REASON_LABEL, applyBulkFlags, parseBulkFlagFile, writeBulkFlagTemplate } from '../core/bulkFlags.ts';
 import { buildCapaianPdf, PDF_MAX_ROWS } from '../core/pdfCapaian.ts';
 import { guessMapping, importAssignments, writeAssignmentTemplate, MANUAL_REASONS } from '../core/excel.ts';
@@ -645,6 +646,49 @@ export async function buildApp() {
     catch (e: any) { return reply.code(400).send({ error: String(e?.message ?? e) }); }
   });
 
+  /**
+   * Pratinjau sebelum impor: NIK mana yang sudah punya kunjungan SSI pada tahun penugasan.
+   *
+   * Gunanya bukan memblokir, melainkan memberi tahu bahwa pasien itu kemungkinan sudah
+   * diinput sebelum dibagikan (terukur 25 Nov 2026: 2 dari 4.398 NIK batch November).
+   * Tanpa peringatan ini, hal seperti itu baru ketahuan setelah laporan dihitung.
+   */
+  app.post('/api/assign/precheck', async (req, reply) => {
+    const body = req.body as any;
+    let file: string;
+    try { file = await resolveUpload(body); } catch (e: any) { return reply.code(400).send({ error: String(e?.message ?? e) }); }
+    const mapping = body.mapping ?? (await guessMapping(file)).mapping;
+    let parsed;
+    try { parsed = await importAssignments(file, mapping); }
+    catch (e: any) { return reply.code(400).send({ error: String(e?.message ?? e) }); }
+
+    const visits = await store.allVisits();
+    const yearsByNik = new Map<string, Set<number>>();
+    for (const v of visits) {
+      const nik = normalizeNik(v.nik);
+      if (!nik) continue;
+      const y = yearOf(v.register_date);
+      if (y === null) continue;
+      const set = yearsByNik.get(nik) ?? new Set<number>();
+      set.add(y);
+      yearsByNik.set(nik, set);
+    }
+
+    const sudah = parsed.rows
+      .filter((r) => {
+        const years = yearsByNik.get(r.nik!);
+        return r.year === null ? Boolean(years && years.size) : Boolean(years?.has(r.year));
+      })
+      .map((r) => ({ rowNo: r.rowNo, petugas: r.petugas, nik: r.nik, name: r.name, year: r.year }));
+
+    return {
+      total: parsed.rows.length,
+      skipped: parsed.skipped.length,
+      alreadyInSsi: sudah.length,
+      examples: sudah.slice(0, 50),
+    };
+  });
+
   app.post('/api/assign/import', async (req, reply) => {
     const body = req.body as any;
     let file: string;
@@ -740,7 +784,13 @@ export async function buildApp() {
   });
 
   /* ---------- batch penugasan ---------- */
-  app.get('/api/batches', async () => ({ batches: await store.listBatches() }));
+  app.get('/api/batches', async () => {
+    const all = await store.listBatches();
+    // Batch yang sedang dipakai laporan: batch aktif terbaru. Dikirim eksplisit supaya
+    // halaman laporan tidak perlu menebak dari urutan.
+    const current = await store.resolveBatch(null);
+    return { batches: all, currentId: current?.id ?? null };
+  });
 
   /** Pilihan syarat "dianggap sudah diinput" + aturan yang kini dipakai tiap batch. */
   app.get('/api/match-rules', async () => ({

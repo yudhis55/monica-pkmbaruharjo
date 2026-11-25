@@ -47,7 +47,14 @@ function width(text: string, size: number, bold: boolean): number {
   return text.length * size * (bold ? 0.56 : 0.52);
 }
 
-function buildContent(input: PdfCapaianInput, pageW: number, pageH: number): string {
+function buildContent(
+  input: PdfCapaianInput,
+  pageW: number,
+  pageH: number,
+  rows: PdfPetugasRow[],
+  total: PdfPetugasRow | null,
+  footNote: string | null,
+): string {
   const left = 36;
   const right = pageW - 36;
   const top = pageH - 40;
@@ -96,7 +103,9 @@ function buildContent(input: PdfCapaianInput, pageW: number, pageH: number): str
   // dibatasi adalah tinggi, bukan jumlah nama. Batas 17pt menjaga jarak antar baris
   // supaya nama baris berikutnya tidak tertutup garis dan bar capaian.
   const bottomGap = 34;
-  const rowH = Math.min(17, (headY - bottomGap) / Math.max(input.rows.length + 1, 1));
+  // +1 hanya bila baris total ikut dicetak: halaman pertama (tanpa total) bisa memuat
+  // satu baris lebih banyak daripada halaman terakhir.
+  const rowH = Math.min(17, (headY - bottomGap) / Math.max(rows.length + (total ? 1 : 0), 1));
   const size = rowH < 9 ? 6 : rowH < 10 ? 6.5 : rowH < 12.5 ? 7.5 : rowH < 15 ? 9 : 10;
   // Kalau baris sangat rapat, nama panjang dipotong dengan ".." daripada bertumpuk
   // ke baris di atasnya (baris 6pt tidak bisa memuat dua baris teks).
@@ -132,7 +141,7 @@ function buildContent(input: PdfCapaianInput, pageW: number, pageH: number): str
   const barY = (base: number) => base - 1.5;
 
   let y = headY - 5 - rowH;
-  for (const r of input.rows) {
+  for (const r of rows) {
     const base = y + (rowH - size) / 2 + 1;
     const lines = wrap(r.petugas);
     lines.forEach((t, i) => {
@@ -150,32 +159,56 @@ function buildContent(input: PdfCapaianInput, pageW: number, pageH: number): str
     y -= rowH;
   }
 
-  // Baris total.
-  const totalBase = y + (rowH - size) / 2 + 1;
-  out.push(line(nameLeft, y + rowH - 2, right, y + rowH - 2, 0.35));
-  out.push(cell({ s: input.total.petugas, x: nameLeft, y: totalBase, size, bold: true }));
-  out.push(cell({ s: num(input.total.assigned), x: colAssigned, y: totalBase, size, bold: true, align: 'right' }));
-  out.push(cell({ s: num(input.total.diinput), x: colDiinput, y: totalBase, size, bold: true, align: 'right' }));
-  out.push(cell({ s: num(input.total.gagal), x: colGagal, y: totalBase, size, bold: true, align: 'right' }));
-  out.push(cell({ s: num(input.total.belum), x: colBelum, y: totalBase, size, bold: true, align: 'right' }));
-  out.push(cell({ s: pct(input.total.pct), x: colPct, y: totalBase, size, bold: true, align: 'right' }));
-  const tbx = colPct + 8;
-  out.push(rect(tbx, barY(totalBase), barW, 4, 0.85, 0.85, 0.85));
-  if (input.total.pct > 0) out.push(rect(tbx, barY(totalBase), Math.max(1, barW * clamp01(input.total.pct / 100)), 4, 0.13, 0.13, 0.13));
+  // Baris total — hanya dicetak sekali, di halaman terakhir.
+  if (total) {
+    const totalBase = y + (rowH - size) / 2 + 1;
+    out.push(line(nameLeft, y + rowH - 2, right, y + rowH - 2, 0.35));
+    out.push(cell({ s: total.petugas, x: nameLeft, y: totalBase, size, bold: true }));
+    out.push(cell({ s: num(total.assigned), x: colAssigned, y: totalBase, size, bold: true, align: 'right' }));
+    out.push(cell({ s: num(total.diinput), x: colDiinput, y: totalBase, size, bold: true, align: 'right' }));
+    out.push(cell({ s: num(total.gagal), x: colGagal, y: totalBase, size, bold: true, align: 'right' }));
+    out.push(cell({ s: num(total.belum), x: colBelum, y: totalBase, size, bold: true, align: 'right' }));
+    out.push(cell({ s: pct(total.pct), x: colPct, y: totalBase, size, bold: true, align: 'right' }));
+    const tbx = colPct + 8;
+    out.push(rect(tbx, barY(totalBase), barW, 4, 0.85, 0.85, 0.85));
+    if (total.pct > 0) out.push(rect(tbx, barY(totalBase), Math.max(1, barW * clamp01(total.pct / 100)), 4, 0.13, 0.13, 0.13));
+  }
+
+  // Catatan kaki: nomor halaman, supaya cetakan berlembar tidak tertukar.
+  if (footNote) {
+    out.push(cell({ s: footNote, x: left, y: 22, size: 8 }));
+  }
 
   return out.join('\n');
 }
 
-function assemble(content: string, pageW: number, pageH: number): Buffer {
+/**
+ * Rakit PDF dari satu atau beberapa halaman. Nomor objek: 1 katalog, 2 daftar halaman,
+ * 3..(2+N) halaman, (3+N) isi tiap halaman, lalu dua font di akhir.
+ */
+function assemble(pages: string[], pageW: number, pageH: number): Buffer {
+  const n = pages.length;
+  const firstPageObj = 3;
+  const firstContentObj = 3 + n;
+  const font1 = firstContentObj + n;
+  const font2 = font1 + 1;
+
+  const kids = pages.map((_, i) => `${firstPageObj + i} 0 R`).join(' ');
   const objects: string[] = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
-      '/Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> /Contents 4 0 R >>',
-    `<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>',
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>',
+    `<< /Type /Pages /Kids [${kids}] /Count ${n} >>`,
   ];
+  pages.forEach((_, i) => {
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageW} ${pageH}] ` +
+        `/Resources << /Font << /F1 ${font1} 0 R /F2 ${font2} 0 R >> >> /Contents ${firstContentObj + i} 0 R >>`,
+    );
+  });
+  pages.forEach((content) => {
+    objects.push(`<< /Length ${Buffer.byteLength(content, 'latin1')} >>\nstream\n${content}\nendstream`);
+  });
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>');
+  objects.push('<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>');
 
   let pdf = '%PDF-1.4\n';
   const offsets: number[] = [];
@@ -203,10 +236,35 @@ const MIN_ROW_H = 8.5;
 const RESERVED = 40 + 18 + 26 + 19 + 34;
 export const PDF_MAX_ROWS = Math.floor((A4_LANDSCAPE[1] - RESERVED) / MIN_ROW_H) - 1;
 
+/**
+ * PDF capaian: satu halaman bila muat, lebih bila perlu. Dulu fungsi ini melempar galat
+ * ketika petugas lebih dari 52 — artinya tombol "Unduh PDF" selalu gagal pada batch
+ * normal (63 petugas). Sekarang daftar dipecah ke beberapa halaman dan baris total
+ * dicetak di halaman terakhir.
+ */
 export function buildCapaianPdf(input: PdfCapaianInput): Buffer {
-  if (input.rows.length > PDF_MAX_ROWS) {
-    throw new Error(`Petugas terlalu banyak untuk satu halaman PDF (${input.rows.length} > ${PDF_MAX_ROWS}).`);
-  }
   const [w, h] = A4_LANDSCAPE;
-  return assemble(buildContent(input, w, h), w, h);
+
+  // Pecah baris per halaman. Halaman terakhir harus menyisakan satu tempat untuk
+  // baris total; bila potongan terakhir tepat penuh, total pindah ke halaman tambahan.
+  const chunks: PdfPetugasRow[][] = [];
+  for (let i = 0; i < input.rows.length; i += PDF_MAX_ROWS) {
+    chunks.push(input.rows.slice(i, i + PDF_MAX_ROWS));
+  }
+  if (!chunks.length) chunks.push([]);
+
+  const lastChunk = chunks[chunks.length - 1];
+  const totalOnOwnPage = lastChunk.length === PDF_MAX_ROWS;
+  const pageCount = chunks.length + (totalOnOwnPage ? 1 : 0);
+
+  const pages: string[] = [];
+  chunks.forEach((chunk, i) => {
+    const isLast = i === chunks.length - 1;
+    const withTotal = isLast && !totalOnOwnPage ? input.total : null;
+    pages.push(buildContent(input, w, h, chunk, withTotal, `Halaman ${i + 1} dari ${pageCount} — ${input.title}`));
+  });
+  if (totalOnOwnPage) {
+    pages.push(buildContent(input, w, h, [], input.total, `Halaman ${pageCount} dari ${pageCount} — ${input.title}`));
+  }
+  return assemble(pages, w, h);
 }

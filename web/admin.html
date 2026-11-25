@@ -17,13 +17,6 @@
   })();
 </script>
 <style>
-  /* Tanpa jalur langsung ke SSI (Vercel), semua aksi SSI tetap tersedia tetapi berjalan
-     lewat proxy Indonesia. Yang disembunyikan hanya tombol cek sesi (tidak bermakna tanpa
-     sesi baru) — form login TETAP ADA, karena token bisa kedaluwarsa kapan saja. */
-  body.no-ssi #btnProbe, body.no-ssi #probeHelp { display: none; }
-  #ssiNotice { display: none; }
-  body.no-ssi #ssiNotice { display: block; }
-  body.no-ssi #btnSync::after, body.no-ssi #btnLogin::after { content: " (lewat proxy)"; font-weight: 400; opacity: .75; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
@@ -31,452 +24,604 @@
   @font-face { font-family: "Geist Mono"; src: url("/fonts/geist-mono-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
 
   :root {
-    --bg: #ffffff;
+    --bg: #f6f6f4;
     --panel: #ffffff;
-    --panel-2: #fafafa;
-    --text: #0a0a0a;
-    --muted: #55554f;
-    --soft: #77776f;
-    --line: #e6e6e6;
-    --line-soft: #f0f0f0;
-    --grid: #f0f0f0;
-    --ok: #0f6b5e;
-    --alert: #b01a1a;
-    --warn: #8a5300;
-    --btn: #0a0a0a;
+    --panel-2: #fafaf9;
+    --text: #101110;
+    --muted: #5b5b54;
+    --soft: #86867c;
+    --line: #e4e4e0;
+    --line-soft: #f0f0ec;
+    --ok: #0b6b51;
+    --ok-bg: #e7f4ee;
+    --alert: #a81717;
+    --alert-bg: #fdecec;
+    --warn: #7a4a00;
+    --warn-bg: #fdf3e3;
+    --btn: #101110;
     --btn-text: #ffffff;
-    --btn-hover: #262626;
-    --focus: #0a0a0a;
-    --r: 0px;
+    --btn-hover: #2a2c2a;
+    --focus: #101110;
+    --r: 10px;
+    --r-sm: 7px;
     --sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     --mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-    --gap: 14px;
+    --gap: 16px;
     --pad: 22px;
+    --shadow: 0 1px 2px rgba(16, 17, 16, .04), 0 1px 1px rgba(16, 17, 16, .02);
   }
   html[data-theme="dark"] {
-    --bg: #08090a;
-    --panel: #101112;
-    --panel-2: #0c0d0e;
+    --bg: #0b0c0c;
+    --panel: #141615;
+    --panel-2: #101211;
     --text: #ecece8;
-    --muted: #b4b4af;
-    --soft: #8f8f89;
-    --line: #26272c;
-    --line-soft: #1a1b1e;
-    --grid: #161719;
-    --ok: #3fdec9;
-    --alert: #fb4b5b;
-    --warn: #e3b341;
-    --btn: #3fdec9;
-    --btn-text: #06201c;
-    --btn-hover: #6ae8d7;
-    --focus: #3fdec9;
+    --muted: #a3a39b;
+    --soft: #86867e;
+    --line: #262927;
+    --line-soft: #1d201f;
+    --ok: #5cc7a2;
+    --ok-bg: #10241d;
+    --alert: #ef7a7a;
+    --alert-bg: #2a1414;
+    --warn: #e0ae5a;
+    --warn-bg: #241c0f;
+    --btn: #ecece8;
+    --btn-text: #101110;
+    --btn-hover: #ffffff;
+    --focus: #ecece8;
+    --shadow: none;
   }
-
-  *, *::before, *::after { box-sizing: border-box; }
-  [hidden] { display: none !important; }
-  html { -webkit-text-size-adjust: 100%; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
   body {
-    margin: 0; color: var(--text);
-    font: 400 17px/1.55 var(--sans);
-    font-variant-numeric: tabular-nums;
+    background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 15.5px; line-height: 1.5;
     -webkit-font-smoothing: antialiased;
-    background-color: var(--bg);
-    background-image:
-      linear-gradient(var(--grid) 1px, transparent 1px),
-      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
-    background-size: 48px 48px, 48px 48px;
   }
-  h1, h2, h3, p { margin: 0; }
-  button { font: inherit; color: inherit; }
   a { color: inherit; }
   :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   .sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-  .mono { font-family: var(--mono); font-size: 14px; }
+  .mono { font-family: var(--mono); font-size: 13.5px; }
   .faint { color: var(--soft); }
   .muted { color: var(--muted); }
-  .caption { font-family: var(--mono); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
+  .caption { font-family: var(--mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--soft); }
 
-  .shell { max-width: 1080px; margin: 0 auto; padding: var(--pad); display: flex; flex-direction: column; gap: var(--gap); }
+  /* ---------- kerangka: sidebar + konten ---------- */
   .app[hidden] { display: none !important; }
-
-  .topbar {
-    display: flex; align-items: center; justify-content: space-between; gap: 16px;
-    padding: 14px var(--pad); background: var(--panel);
-    border: 1px solid var(--line); border-bottom-style: dashed; border-radius: var(--r);
+  .layout {
+    display: grid; grid-template-columns: 232px minmax(0, 1fr); gap: 0; min-height: 100vh;
+    /* `minmax(0, 1fr)` + `min-width: 0` di anak: tanpa ini item grid melebar mengikuti
+       min-content (mis. deretan nav), dan halaman bisa digulir ke samping. */
+    /* Garis kolom kiri digambar di wadah, bukan di aside: aside-nya sticky setinggi
+       satu layar, jadi latarnya akan terputus pada halaman yang panjang. */
+    background-image: linear-gradient(to right,
+      var(--panel) 0, var(--panel) 231px, var(--line) 231px, var(--line) 232px, transparent 232px);
   }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brand svg { flex: none; }
-  .brand h1 { font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
-  .brand .sub { font-size: 14px; color: var(--muted); }
-  .topbar-right { display: flex; align-items: center; gap: 10px; }
-  .icon-btn {
-    display: inline-grid; place-items: center; width: 40px; height: 40px; flex: none;
-    border: 1px solid var(--line); border-radius: var(--r); background: transparent; cursor: pointer; color: var(--muted);
+  .side {
+    background: transparent; min-width: 0;
+    padding: 18px 14px; display: flex; flex-direction: column; gap: 18px;
+    position: sticky; top: 0; height: 100vh; overflow: auto;
   }
-  .icon-btn:hover { color: var(--text); border-color: var(--soft); }
-  .icon-btn svg { width: 20px; height: 20px; display: block; }
-  #themeBtn svg[hidden] { display: none; }
-  .nav-link {
-    display: inline-flex; align-items: center; font-size: 15px; text-decoration: none; color: var(--muted);
-    padding: 9px 14px; border: 1px solid var(--line); border-radius: var(--r);
+  .side .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px; }
+  .side .brand svg { flex: none; }
+  .side .brand h1 { font-size: 16px; font-weight: 600; margin: 0; letter-spacing: -.01em; }
+  .side .brand .sub { font-size: 12px; color: var(--soft); margin: 0; }
+  .side nav { display: flex; flex-direction: column; gap: 2px; }
+  .side nav a {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 10px; border-radius: var(--r-sm);
+    font-size: 14.5px; text-decoration: none; color: var(--muted);
   }
-  .nav-link:hover { color: var(--text); border-color: var(--soft); }
+  .side nav a:hover { background: var(--panel-2); color: var(--text); }
+  .side nav a[aria-current="page"] { background: var(--panel-2); color: var(--text); font-weight: 500; }
+  .side nav a svg { width: 17px; height: 17px; flex: none; opacity: .8; }
+  .side .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 6px; }
+  .side .side-foot .caption { font-size: 10.5px; }
 
-  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
-  .panel-head { padding: 16px var(--pad); border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
-  .panel-head h2 { font-size: 18px; font-weight: 600; }
-  .panel-body { padding: 18px var(--pad); display: flex; flex-direction: column; gap: 14px; }
-  .panel-body p { color: var(--muted); font-size: 16px; max-width: 70ch; }
+  .main { padding: 26px 30px 60px; max-width: 1120px; width: 100%; min-width: 0; }
+  .page-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+  .page-head h1 { font-size: 24px; font-weight: 600; margin: 0 0 2px; letter-spacing: -.02em; }
+  .page-head p { margin: 0; color: var(--muted); font-size: 14px; }
+  .page-actions { display: flex; align-items: center; gap: 8px; }
 
-  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  /* ---------- kartu ringkas ---------- */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow); }
+  .card .k { font-size: 12px; color: var(--soft); display: flex; align-items: center; gap: 6px; }
+  .card .v { font-size: 21px; font-weight: 600; margin-top: 3px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
+  .card .s { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .card .v[data-tone="ok"] { color: var(--ok); }
+  .card .v[data-tone="bad"] { color: var(--alert); }
+  .card .v[data-tone="warn"] { color: var(--warn); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--soft); flex: none; }
+  .dot[data-tone="ok"] { background: var(--ok); }
+  .dot[data-tone="bad"] { background: var(--alert); }
+  .dot[data-tone="warn"] { background: var(--warn); }
+
+  /* ---------- panel/section ---------- */
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); margin-bottom: var(--gap); }
+  .panel-head { padding: 15px 20px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .panel-head h2 { font-size: 15.5px; font-weight: 600; margin: 0; }
+  .panel-head .spacer { flex: 1; }
+  .panel-body { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .panel-body p { color: var(--muted); font-size: 14px; max-width: 75ch; margin: 0; }
+  .panel-body h4 { margin: 4px 0 0; font-size: 13.5px; }
+  .panel-body ul { margin: 4px 0 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+  .hint { color: var(--soft); font-size: 12.5px; }
+
+  /* ---------- tombol ---------- */
   .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; white-space: nowrap;
-    font-size: 16px; font-weight: 500; padding: 10px 16px; border-radius: var(--r);
-    border: 1px solid var(--soft); background: transparent; color: var(--text); text-decoration: none; line-height: 1.2;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    font: inherit; font-size: 14px; font-weight: 500;
+    padding: 8px 14px; border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--panel); color: var(--text); cursor: pointer; text-decoration: none;
+    transition: background .12s, border-color .12s;
   }
-  .btn:hover:not(:disabled) { background: var(--panel-2); }
+  .btn:hover:not(:disabled) { background: var(--panel-2); border-color: var(--soft); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
   .btn.primary { background: var(--btn); border-color: var(--btn); color: var(--btn-text); }
   .btn.primary:hover:not(:disabled) { background: var(--btn-hover); border-color: var(--btn-hover); }
+  .btn.danger { color: var(--alert); }
+  .btn.sm { padding: 5px 9px; font-size: 12.5px; }
   .btn[aria-busy="true"] { cursor: progress; opacity: .7; }
+  .btn svg { width: 15px; height: 15px; }
 
-  .field { display: flex; flex-direction: column; gap: 6px; }
-  .field > label { font-size: 15px; color: var(--muted); }
-  .field input {
-    font: inherit; font-size: 17px; padding: 11px 12px;
-    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
+  /* ---------- form ---------- */
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field > label { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .field input, .field select {
+    font: inherit; font-size: 14.5px; padding: 8px 11px;
+    border: 1px solid var(--line); border-radius: var(--r-sm);
+    background: var(--panel); color: var(--text); min-width: 0;
   }
-  .file-name { font-family: var(--mono); font-size: 14px; color: var(--muted); }
-  .captcha-row { display: flex; gap: 10px; align-items: center; }
-  .captcha-btn {
-    width: 165px; height: 55px; display: grid; place-items: center; overflow: hidden; padding: 0;
-    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel-2); cursor: pointer; line-height: 0;
-  }
-  .captcha-btn img { width: 150px; height: 50px; display: block; }
-  .captcha-btn .captcha-msg { font-size: 13px; line-height: 1.3; color: var(--muted); padding: 0 8px; text-align: center; }
-  .captcha-btn[aria-busy="true"] { opacity: .6; cursor: progress; }
-  .captcha-row input { width: 110px; letter-spacing: .1em; font-family: var(--mono); font-size: 17px; padding: 11px 12px; border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text); }
-  .field-error { min-height: 1.2em; font-size: 15px; color: var(--alert); }
-  /* gambar captcha disembunyikan sebelum ada src supaya tidak muncul ikon gambar rusak */
-  #captcha:not([src]) { display: none; }
+  .field input:focus, .field select:focus { border-color: var(--soft); }
+  .field-help { font-size: 12.5px; color: var(--soft); margin: 0; }
+  .field-error { min-height: 1.1em; font-size: 13.5px; color: var(--alert); margin: 0; }
   .field-error:empty { display: none; }
-  .alt { border-top: 1px solid var(--line-soft); padding-top: 12px; }
-  .alt > summary { cursor: pointer; font-size: 15px; color: var(--muted); }
+  .file-name { font-family: var(--mono); font-size: 12.5px; color: var(--muted); align-self: center; }
 
-  /* gerbang sandi: modal wajib, tidak bisa ditutup dengan Esc/klik luar */
-  dialog.gate {
-    width: min(420px, calc(100vw - 32px)); padding: 0; border: 1px solid var(--line);
-    border-radius: var(--r); background: var(--panel); color: var(--text);
-  }
-  dialog.gate::backdrop { background: rgba(0, 0, 0, .55); }
-  .gate-body { padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
-  .gate-body .caption { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
-  .gate-body h2 { font-size: 19px; font-weight: 600; }
-  .gate-body p { font-size: 14px; color: var(--muted); }
-  .gate-body input {
-    font: inherit; font-size: 16px; padding: 11px 12px; margin-top: 4px;
-    border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text);
-  }
-  .gate-body .btn { margin-top: 6px; }
-  .gate-error { min-height: 1.2em; font-size: 13.5px; color: var(--alert); }
-  .gate-foot { font-size: 13px; }
-  .gate-foot a { color: var(--muted); }
+  details.alt { border-top: 1px dashed var(--line); padding-top: 12px; }
+  details.alt > summary { cursor: pointer; font-size: 13px; color: var(--muted); list-style: none; display: flex; align-items: center; gap: 6px; }
+  details.alt > summary::-webkit-details-marker { display: none; }
+  details.alt > summary::before { content: "▸"; font-size: 11px; color: var(--soft); }
+  details.alt[open] > summary::before { content: "▾"; }
+  details.alt > summary:hover { color: var(--text); }
 
-  .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1px; background: var(--line); border-top: 1px solid var(--line); }
-  .status-cell { background: var(--panel); padding: 16px var(--pad); display: flex; flex-direction: column; gap: 4px; }
-  .status-cell .k { font-family: var(--mono); font-size: 12px; letter-spacing: .07em; text-transform: uppercase; color: var(--soft); }
-  .status-cell .v { font-size: 19px; font-weight: 500; }
-  .status-cell .v[data-tone="ok"] { color: var(--ok); }
-  .status-cell .v[data-tone="bad"] { color: var(--alert); }
-  .status-cell .s { font-size: 14px; color: var(--muted); }
+  .captcha-row { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+  .captcha-btn { padding: 0; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel); cursor: pointer; overflow: hidden; line-height: 0; }
+  .captcha-btn img { width: 150px; height: 50px; display: block; }
+  .captcha-btn img:not([src]) { display: none; }
+  .captcha-btn .captcha-msg { font-size: 12px; line-height: 1.3; color: var(--muted); padding: 12px 8px; text-align: center; display: block; }
+  /* `display: block` di atas mengalahkan atribut `hidden`; tanpa aturan ini teks
+     "Memuat captcha…" tetap tampil di bawah gambar yang sudah jadi. */
+  .captcha-btn .captcha-msg[hidden] { display: none; }
+  .captcha-btn[aria-busy="true"] { opacity: .6; cursor: progress; }
+  .captcha-row input { width: 110px; letter-spacing: .1em; font-family: var(--mono); font-size: 16px; }
+  .captcha-row .btn { align-self: flex-start; }
 
-  .log { font: 14px/1.65 var(--mono); color: var(--muted); max-height: 260px; overflow: auto; white-space: pre-wrap; background: var(--panel-2); border-top: 1px solid var(--line); padding: 14px var(--pad); }
-  .batch-list { display: flex; flex-direction: column; border: 1px solid var(--line); }
-  .batch-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; gap: 4px 12px; padding: 12px 14px; border-bottom: 1px solid var(--line-soft); }
-  .batch-row:last-child { border-bottom: 0; }
-  .batch-row[data-current="1"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--ok); }
-  .batch-row .bn { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .batch-row .bm { font-size: 13px; color: var(--muted); }
-  .batch-badge { font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--soft); color: var(--muted); }
-  .batch-badge[data-s="aktif"] { color: var(--ok); border-color: var(--ok); }
-  .batch-badge[data-s="selesai"] { color: var(--muted); }
-  .batch-badge[data-s="arsip"] { color: var(--soft); border-style: dashed; }
-  .batch-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
-  .batch-actions .btn { padding: 5px 9px; font-size: 13px; }
-  .field select { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--soft); border-radius: var(--r); background: var(--panel); color: var(--text); }
-  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border: 1px solid var(--line); }
-
+  /* ---------- log ---------- */
+  .log { font: 12.5px/1.7 var(--mono); color: var(--muted); max-height: 240px; overflow: auto; white-space: pre-wrap; background: var(--panel-2); border-top: 1px solid var(--line-soft); padding: 12px 20px; border-radius: 0 0 var(--r) var(--r); }
   .log:empty { display: none; }
   .log .t { color: var(--soft); }
   .log .err { color: var(--alert); }
   .log .warn { color: var(--warn); }
+  .log .ok { color: var(--ok); }
 
-  .cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--gap); align-items: start; }
+  /* ---------- daftar batch ---------- */
+  .batch-row { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: center; gap: 4px 12px; padding: 12px 4px; border-bottom: 1px solid var(--line-soft); }
+  .batch-row:first-child { padding-top: 2px; }
+  .batch-row:last-child { border-bottom: 0; }
+  .batch-row[data-current="1"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--ok); padding-left: 12px; border-radius: var(--r-sm); }
+  .batch-row .bn { font-weight: 600; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 14.5px; }
+  .batch-row .bm { font-size: 12.5px; color: var(--muted); }
+  .batch-badge { font-size: 10.5px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-weight: 500; }
+  .batch-badge[data-s="aktif"] { color: var(--ok); border-color: var(--ok); background: var(--ok-bg); }
+  .batch-badge[data-s="selesai"] { color: var(--muted); }
+  .batch-badge[data-s="arsip"] { color: var(--soft); border-style: dashed; }
+  .batch-actions { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+  .sr-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px solid var(--line-soft); }
+  .sr-row:last-child { border-bottom: 0; }
+  .bulk-result { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; background: var(--panel-2); }
+  .bulk-result .bs { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .bulk-result .bs span { display: flex; flex-direction: column; }
+  .bulk-result .bs b { font-size: 17px; color: var(--text); }
+  .bulk-result h4 { font-size: 13px; margin-top: 10px; }
+  .bulk-result ul { font-size: 12.5px; max-height: 160px; overflow: auto; }
 
-  @media (max-width: 760px) {
-    :root { --pad: 16px; }
-    body { font-size: 16px; }
-    .topbar { padding: 10px var(--pad); flex-wrap: wrap; row-gap: 8px; }
-    .brand { flex: 1 1 100%; }
-    .topbar-right { flex: 1 1 100%; justify-content: flex-end; }
-    .icon-btn { width: 38px; height: 38px; }
-    .brand h1 { font-size: 17px; }
-    .brand .sub { font-size: 12.5px; }
+  /* stepper alur impor */
+  .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: var(--soft); margin-bottom: 2px; }
+  .flow b { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600; }
+  .flow .sep { color: var(--line); }
+
+  .notice { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--r-sm); font-size: 13.5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+  .notice[data-tone="warn"] { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn); }
+  .notice[data-tone="ok"] { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 30%, transparent); color: var(--ok); }
+  .notice[data-tone="bad"] { background: var(--alert-bg); border-color: color-mix(in srgb, var(--alert) 30%, transparent); color: var(--alert); }
+  .notice[hidden] { display: none; }
+  #ssiNotice { display: none; }
+  body.no-ssi #ssiNotice { display: flex; }
+  body.no-ssi #btnProbe, body.no-ssi #probeHelp { display: none; }
+  body.no-ssi #btnSync::after, body.no-ssi #btnLogin::after { content: " · proxy"; font-weight: 400; opacity: .7; }
+
+  /* gerbang sandi */
+  dialog.gate { border: 1px solid var(--line); border-radius: var(--r); padding: 0; background: var(--panel); color: var(--text); width: min(420px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
+  dialog.gate::backdrop { background: rgba(8, 9, 9, .55); backdrop-filter: blur(2px); }
+  .gate-body { padding: 26px 24px; display: flex; flex-direction: column; gap: 10px; }
+  .gate-body .caption { font-size: 10.5px; }
+  .gate-body h2 { font-size: 19px; font-weight: 600; margin: 0; }
+  .gate-body p { font-size: 13.5px; color: var(--muted); margin: 0; }
+  .gate-body input { font: inherit; font-size: 15px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel); color: var(--text); }
+  .gate-body .btn { margin-top: 6px; }
+  .gate-error { min-height: 1.1em; font-size: 13px; color: var(--alert); margin: 0; }
+  .gate-foot { font-size: 12.5px; }
+
+  .icon-btn {
+    display: inline-grid; place-items: center; width: 38px; height: 38px; flex: none;
+    border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--panel);
+    cursor: pointer; color: var(--muted); padding: 0;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--soft); }
+  .icon-btn svg { width: 19px; height: 19px; display: block; }
+  #themeBtn svg[hidden] { display: none; }
+
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: var(--gap); align-items: start; margin-bottom: var(--gap); }
+  .grid-2 > .panel { margin-bottom: 0; }
+  .batch-list { display: flex; flex-direction: column; }
+  .setor-list { margin-top: 8px; }
+
+  /* ---------- responsif ---------- */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); background-image: none; }
+    /* Bar atas: satu baris brand + aksi, nav menggulir sendiri di baris kedua.
+       `flex-wrap` wajib: tanpa itu nav dan tombol saling mendorong keluar layar. */
+    .side {
+      position: static; height: auto; background: var(--panel);
+      flex-direction: row; flex-wrap: wrap; align-items: center;
+      gap: 8px; padding: 10px 12px;
+      border-right: 0; border-bottom: 1px solid var(--line); overflow: visible;
+    }
+    .side .brand { order: 1; flex: none; padding: 0; }
+    .side .brand h1 { font-size: 15px; }
+    .side .brand .sub { display: none; }
+    .side .side-foot { order: 2; margin: 0 0 0 auto; flex-direction: row; align-items: center; gap: 6px; padding: 0; flex-wrap: nowrap; }
+    .side .side-foot .caption { display: none; }
+    .side .side-foot .btn { padding: 6px 9px; font-size: 12.5px; white-space: nowrap; }
+    .side nav { order: 3; flex: 1 1 100%; min-width: 0; flex-direction: row; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+    .side nav::-webkit-scrollbar { display: none; }
+    .side nav a { padding: 7px 9px; white-space: nowrap; flex: none; }
+    .side nav a span { display: inline; font-size: 13.5px; }
+    .side nav a svg { width: 15px; height: 15px; }
+    .main { padding: 18px 16px 48px; }
+    .page-head h1 { font-size: 20px; }
     .row .btn { flex: 1 1 auto; }
+    .batch-row { grid-template-columns: 1fr; }
+    .batch-actions { justify-content: flex-start; }
   }
 </style>
 </head>
 <body>
-
-  <div class="app" id="app" hidden>
-  <div class="shell">
-  <header class="topbar">
-    <div class="brand">
-      <svg width="20" height="20" viewBox="0 0 18 18" fill="none" aria-hidden="true">
-        <rect x="0" y="10" width="3" height="8" fill="currentColor" opacity=".35" />
-        <rect x="5" y="5" width="3" height="13" fill="currentColor" opacity=".65" />
-        <rect x="10" y="1" width="3" height="17" fill="currentColor" />
-        <rect x="15" y="7" width="3" height="11" fill="currentColor" opacity=".45" />
-      </svg>
-      <div>
-        <h1>Admin</h1>
-        <p class="sub">Monev CKG · Puskesmas Baruharjo</p>
-      </div>
-    </div>
-    <div class="topbar-right">
-      <button class="icon-btn" id="themeBtn" type="button" title="Ganti tema terang/gelap">
-        <svg class="i-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-          <path d="M15.5 12.4A6.2 6.2 0 0 1 7.6 4.5a6.2 6.2 0 1 0 7.9 7.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+<div class="app" id="app" hidden>
+  <div class="layout">
+    <aside class="side">
+      <div class="brand">
+        <svg width="21" height="21" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+          <rect x="0" y="10" width="3" height="8" fill="currentColor" opacity=".35" />
+          <rect x="5" y="5" width="3" height="13" fill="currentColor" opacity=".65" />
+          <rect x="10" y="1" width="3" height="17" fill="currentColor" />
+          <rect x="15" y="7" width="3" height="11" fill="currentColor" opacity=".45" />
         </svg>
-        <svg class="i-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true" hidden>
-          <circle cx="10" cy="10" r="3.6" stroke="currentColor" stroke-width="1.6" />
-          <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
-        </svg>
-      </button>
-      <a class="nav-link" href="/">← Laporan</a>
-      <button class="nav-link" id="btnLogout" type="button" hidden>Keluar</button>
-    </div>
-  </header>
-
-  <section class="panel" id="statusPanel">
-    <div class="panel-head"><h2>Status sistem</h2><span class="caption" id="meta"></span></div>
-    <div class="status-grid">
-      <div class="status-cell"><span class="k">Sesi SSI</span><span class="v" id="stSession">memeriksa…</span><span class="s" id="stSessionSub"></span></div>
-      <div class="status-cell"><span class="k">Kunjungan tersimpan</span><span class="v" id="stVisits">—</span><span class="s" id="stSync"></span></div>
-      <div class="status-cell"><span class="k">Sinkronisasi terakhir</span><span class="v" id="stBatch">—</span><span class="s" id="stBatchSub"></span></div>
-    </div>
-    <div class="panel-body">
-      <p class="caption" id="ssiNotice">
-        Server ini tidak bisa menjangkau SSI: permintaan dari IP cloud dibalas <strong>403</strong>.
-        Server ini menarik data lewat <strong>proxy Indonesia</strong>. Pastikan pool sudah terisi
-        (tombol <strong>Segarkan pool proxy</strong> di bawah); tanpa proxy yang lolos uji, SSI
-        tidak bisa dihubungi sama sekali dari sini.
-      </p>
-      <div class="row">
-        <button class="btn" id="btnProbe" type="button">Cek sesi sekarang</button>
-        <button class="btn" id="btnRefresh" type="button">Perpanjang sesi</button>
-        <button class="btn" id="btnSync" type="button">Tarik data SSI</button>
-        <!-- Disembunyikan sementara: rincian layanan butuh ±11 menit untuk 1.285 kunjungan.
-             Endpoint /api/detail/fetch tetap ada; buka komentar tombol ini untuk mengaktifkan lagi. -->
-      </div>
-      <div class="row" id="sweepRow" style="align-items:flex-end;margin-top:14px">
-        <div class="field" style="flex:0 1 170px">
-          <label for="sweepStart">Tarik data mulai</label>
-          <input id="sweepStart" type="date" />
-        </div>
-        <div class="field" style="flex:0 1 170px">
-          <label for="sweepEnd">sampai</label>
-          <input id="sweepEnd" type="date" />
-        </div>
-        <button class="btn" id="btnSweepSave" type="button">Simpan rentang</button>
-        <span class="caption" id="sweepInfo">—</span>
-      </div>
-      <p id="sweepHelp">Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
-        Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
-      <div class="row" id="proxyRow" style="align-items:center;margin-top:14px;gap:10px">
-        <button class="btn" id="btnProxyRefresh" type="button">Segarkan pool proxy</button>
-        <span class="caption" id="proxyInfo">memeriksa…</span>
-      </div>
-      <p class="caption" id="proxyHelp">Dipakai saat server ini tidak bisa menjangkau SSI langsung.
-        Proxy diambil dari daftar publik, disaring ke IP Indonesia, lalu diuji sampai ada yang
-        benar-benar bisa menarik satu halaman data. Hanya yang lolos uji dipakai.</p>
-      <p id="probeHelp">Pemeriksaan sesi berjalan otomatis setiap halaman dibuka (sekali per menit). Tombol di atas untuk memaksa pemeriksaan saat Anda butuh.</p>
-    </div>
-    <div class="log" id="log" role="log" aria-live="polite"></div>
-  </section>
-
-  <section class="panel" id="batchPanel">
-    <div class="panel-head"><h2>Batch penugasan</h2><span class="caption">satu batch = satu periode</span></div>
-    <div class="panel-body">
-      <p>Laporan memakai <strong>batch aktif</strong>. Setiap impor menempel ke batch yang dipilih,
-        jadi impor susulan (mis. tambahan pasien pekan berikutnya) tidak membuat batch baru.</p>
-      <div class="batch-list" id="batchList"></div>
-      <details class="alt">
-        <summary>Buat batch baru</summary>
-        <div class="row" style="margin-top:10px;align-items:flex-end">
-          <div class="field" style="flex:1 1 240px"><label for="nbName">Nama batch</label><input id="nbName" placeholder="mis. September" /></div>
-          <div class="field" style="flex:0 1 120px"><label for="nbYear">Tahun</label><input id="nbYear" inputmode="numeric" maxlength="4" placeholder="2026" /></div>
-          <button class="btn primary" id="btnNewBatch" type="button">Buat</button>
-        </div>
-      </details>
-    </div>
-  </section>
-
-  <div class="cols">
-    <section class="panel">
-      <div class="panel-head"><h2>Impor penugasan</h2></div>
-      <div class="panel-body">
-        <p><strong>Unggah ulang mengganti isi batch</strong>: baris yang tidak ada di file baru akan hilang,
-          dan tanda manual lama tetap dipertahankan untuk NIK + petugas yang sama.</p>
-        <p><strong>Kolom wajib:</strong> <code>Petugas</code>, <code>NIK</code> (16 digit), <code>Tahun</code>.
-          Kolom opsional: <code>Nama</code>, <code>Tanggal lahir</code>, <code>Tanggal target</code>,
-          dan <code>Keterangan</code>.</p>
-        <p><strong>Isi kolom <code>Keterangan</code></strong> (opsional): tulis alasan pasien gagal diinput —
-          <em>Data Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>. Kosongkan (atau tulis
-          <em>OK</em> / <em>sudah diinput</em> / <em>selesai</em>) untuk pasien yang berhasil, karena teks bebas
-          yang tidak dikenali akan dihitung sebagai <em>Gagal (lainnya)</em>. Kolom ini menimpa tanda yang ada;
-          tanda yang dibuat manual (supervisor / tanda massal) tetap dipertahankan saat impor ulang.</p>
-        <div class="field">
-          <label for="importBatch">Masukkan ke batch</label>
-          <select id="importBatch"></select>
-        </div>
-        <div class="row">
-          <input type="file" id="file" accept=".xlsx,.xls" class="sr" />
-          <label class="btn" for="file">Pilih Excel</label>
-          <span class="file-name" id="fileName">belum ada file</span>
-        </div>
-        <div class="row">
-          <button class="btn" id="btnAssignTemplate" type="button">Unduh template</button>
-          <button class="btn" id="btnInspect" type="button">Deteksi kolom</button>
-          <button class="btn primary" id="btnImport" type="button" disabled>Impor</button>
+        <div>
+          <h1>Monev CKG</h1>
+          <p class="sub">Puskesmas Baruharjo</p>
         </div>
       </div>
-    </section>
-
-    <section class="panel" id="bulkPanel">
-      <div class="panel-head"><h2>Tanda tidak valid (Excel)</h2></div>
-      <div class="panel-body">
-        <p><strong>Tandai banyak pasien sekaligus</strong> tanpa mengklik satu per satu. Unduh template,
-          isi kolom <code>NIK</code> dan <code>Alasan</code>, lalu unggah kembali.</p>
-        <p><strong>Pilihan alasan:</strong> <em>Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>.
-          <em>Data Hilang</em> untuk pasien yang diklaim sudah diinput tetapi tidak muncul di SSI saat ditarik.
-          Tanda hanya berlaku untuk pasien di batch aktif yang <em>belum</em> diinput; pasien yang sudah
-          diinput dilewati dan dilaporkan. Tanda lama pada NIK yang sama diganti oleh isi file.</p>
-        <div class="row">
-          <button class="btn" id="btnTemplate" type="button">Unduh template</button>
-          <input type="file" id="flagFile" accept=".xlsx,.xls" class="sr" />
-          <label class="btn" for="flagFile">Pilih Excel tanda</label>
-          <span class="file-name" id="flagFileName">belum ada file</span>
-        </div>
-        <div class="row">
-          <button class="btn primary" id="btnFlagImport" type="button" disabled>Terapkan tanda</button>
-        </div>
-        <div class="bulk-result" id="bulkResult" hidden></div>
+      <nav aria-label="Bagian admin">
+        <a href="#statusPanel" aria-current="page">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 3h5v5H3zM12 3h5v5h-5zM3 12h5v5H3zM12 12h5v5h-5z" stroke="currentColor" stroke-width="1.5" /></svg>
+          <span>Ringkasan</span>
+        </a>
+        <a href="#batchPanel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+          <span>Batch</span>
+        </a>
+        <a href="#importPanel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M3.5 12.5v3A1.5 1.5 0 0 0 5 17h10a1.5 1.5 0 0 0 1.5-1.5v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Impor</span>
+        </a>
+        <a href="#bulkPanel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 10.5 7.5 15 17 5.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Tanda</span>
+        </a>
+        <a href="#setorPanel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 3h9l3 3v11H4zM7 3v4h6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /><path d="M7.5 13.5l1.8 1.8 3.4-3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Setoran</span>
+        </a>
+        <a href="#sesi">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="8" r="3.2" stroke="currentColor" stroke-width="1.5" /><path d="M4 17c.6-2.8 3-4.4 6-4.4s5.4 1.6 6 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
+          <span>Sesi SSI</span>
+        </a>
+      </nav>
+      <div class="side-foot">
+        <span class="caption" id="meta">—</span>
+        <a class="btn sm" href="/">Buka laporan</a>
+        <button class="btn sm" id="btnLogout" type="button" hidden>Keluar admin</button>
       </div>
-    </section>
+    </aside>
 
-    <section class="panel" id="rulePanel">
-      <div class="panel-head"><h2>Dasar hitung</h2><span class="caption">kapan pasien dianggap sudah diinput</span></div>
-      <div class="panel-body">
-        <p>Aturan ini berlaku untuk <strong>batch terpilih</strong> di panel impor. Semua tahun pada batch itu
-          memakai aturan yang sama, jadi angka capaian antar-periode tetap sebanding.</p>
-        <div class="field">
-          <label for="matchRule">Pasien dianggap diinput bila</label>
-          <select id="matchRule"></select>
-          <p class="field-help" id="matchRuleHelp"></p>
+    <main class="main">
+      <div class="page-head">
+        <div>
+          <h1>Admin</h1>
+          <p>Kelola batch penugasan, impor Excel, dan tarikan data SSI.</p>
         </div>
-        <p class="caption" id="matchRuleNow">—</p>
-      </div>
-    </section>
-
-    <section class="panel" id="setorPanel">
-      <div class="panel-head"><h2>Setoran petugas</h2><span class="caption">sisa pasien → Data Hilang</span></div>
-      <div class="panel-body">
-        <p><strong>Satu klik per petugas:</strong> semua pasien yang masih <em>belum diinput</em>
-          ditandai <em>Data Hilang</em> (pegawai mengklaim sudah input, data tidak ada di SSI).
-          Baris yang sudah diinput atau sudah punya tanda lain tidak disentuh.</p>
-        <div class="field">
-          <label for="setorPetugas">Pilih petugas</label>
-          <select id="setorPetugas"></select>
-        </div>
-        <p class="caption" id="setorInfo">—</p>
-        <div class="row">
-          <button class="btn primary" id="btnSetor" type="button" disabled>Tandai sudah setor</button>
-          <button class="btn" id="btnSetorBatal" type="button" disabled>Batalkan setoran</button>
-        </div>
-        <details class="alt">
-          <summary>Petugas sudah setor semua? Lihat daftarnya</summary>
-          <div class="setor-list" id="setorList"></div>
-        </details>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head"><h2>Ekspor</h2></div>
-      <div class="panel-body">
-        <p>Rekap per petugas dan detail pasien, termasuk kolom sebab gagal dan catatan pegawai.</p>
-        <div class="row">
-          <a class="btn" href="/api/report.xlsx">Unduh Excel laporan</a>
-          <a class="btn" href="/api/report.pdf">Unduh PDF capaian petugas</a>
-        </div>
-        <p style="margin-top:14px">Data mentah SSI: <strong>seluruh kunjungan</strong> yang tersimpan,
-          termasuk pasien yang belum masuk Excel penugasan. NIK ditulis penuh, jadi berkas ini
-          untuk pemeriksaan internal.</p>
-        <div class="row" style="align-items:flex-end">
-          <div class="field" style="flex:0 1 110px">
-            <label for="visitsYear">Tahun</label>
-            <input id="visitsYear" inputmode="numeric" maxlength="4" placeholder="semua" />
-          </div>
-          <a class="btn" id="btnVisits" href="/api/visits.xlsx">Unduh data mentah SSI</a>
-          <span class="caption" id="visitsInfo">semua tahun</span>
+        <div class="page-actions">
+          <button class="icon-btn" id="themeBtn" type="button" title="Ganti tema terang/gelap">
+            <svg class="i-moon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M15.5 12.4A6.2 6.2 0 0 1 7.6 4.5a6.2 6.2 0 1 0 7.9 7.9Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" />
+            </svg>
+            <svg class="i-sun" viewBox="0 0 20 20" fill="none" aria-hidden="true" hidden>
+              <circle cx="10" cy="10" r="3.6" stroke="currentColor" stroke-width="1.6" />
+              <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+            </svg>
+          </button>
+          <button class="btn primary" id="btnSync" type="button">Tarik data SSI</button>
         </div>
       </div>
-    </section>
-  </div>
 
-  <section class="panel" id="sesi">
-    <div class="panel-head"><h2>Masuk ke SSI</h2><span class="caption">diperlukan untuk menarik data</span></div>
-    <div class="panel-body">
-      <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:14px">
-        <div class="row">
-          <div class="field" style="flex:1 1 240px">
-            <label for="email">Email SSI</label>
-            <input id="email" type="email" autocomplete="username" spellcheck="false" />
-          </div>
-          <div class="field" style="flex:1 1 200px">
-            <label for="password">Kata sandi</label>
-            <input id="password" type="password" autocomplete="current-password" />
-          </div>
+      <div class="cards">
+        <div class="card">
+          <div class="k">Sesi SSI</div>
+          <div class="v" id="stSession">memeriksa…</div>
+          <div class="s" id="stSessionSub"></div>
         </div>
-        <div class="row">
-          <div class="field">
-            <label for="code">Kode captcha</label>
-            <div class="captcha-row">
-              <button type="button" class="captcha-btn" id="captchaBtn" title="Klik untuk ganti gambar" aria-label="Ganti gambar captcha">
-                <img id="captcha" alt="Gambar captcha" />
-                <span class="captcha-msg" id="captchaMsg" hidden>Memuat…</span>
-              </button>
-              <input id="code" inputmode="numeric" maxlength="6" autocomplete="off" />
+        <div class="card">
+          <div class="k">Kunjungan tersimpan</div>
+          <div class="v" id="stVisits">—</div>
+          <div class="s" id="stSync"></div>
+        </div>
+        <div class="card">
+          <div class="k">Sinkronisasi terakhir</div>
+          <div class="v" id="stBatch">—</div>
+          <div class="s" id="stBatchSub"></div>
+        </div>
+      </div>
+
+      <section class="panel" id="statusPanel">
+        <div class="panel-head">
+          <h2>Kendali data</h2>
+          <span class="spacer"></span>
+          <button class="btn sm" id="btnProbe" type="button">Cek sesi</button>
+          <button class="btn sm" id="btnRefresh" type="button">Perpanjang sesi</button>
+        </div>
+        <div class="panel-body">
+          <p class="notice" id="ssiNotice" data-tone="warn">
+            Server ini tidak bisa menjangkau SSI langsung: permintaan dari IP cloud dibalas <strong>403</strong>.
+            Tarikan lewat <strong>proxy Indonesia</strong> — pastikan pool terisi sebelum menarik data.
+          </p>
+          <p id="probeHelp" class="hint">Pemeriksaan sesi berjalan otomatis saat halaman dibuka (maksimal sekali per menit).</p>
+          <details class="alt">
+            <summary>Rentang tarik data</summary>
+            <div class="row" id="sweepRow" style="margin-top:10px">
+              <div class="field" style="flex:0 1 165px">
+                <label for="sweepStart">Mulai</label>
+                <input id="sweepStart" type="date" />
+              </div>
+              <div class="field" style="flex:0 1 165px">
+                <label for="sweepEnd">Sampai</label>
+                <input id="sweepEnd" type="date" />
+              </div>
+              <button class="btn" id="btnSweepSave" type="button">Simpan</button>
+              <span class="caption" id="sweepInfo">—</span>
             </div>
-          </div>
-          <button class="btn primary" id="btnLogin" type="submit">Masuk</button>
+            <p id="sweepHelp" class="hint" style="margin-top:8px">Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
+              Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
+          </details>
+          <details class="alt">
+            <summary>Proxy SSI</summary>
+            <div class="row" id="proxyRow" style="margin-top:10px;align-items:center">
+              <button class="btn" id="btnProxyRefresh" type="button">Segarkan pool proxy</button>
+              <span class="caption" id="proxyInfo">memeriksa…</span>
+            </div>
+            <p id="proxyHelp" class="hint" style="margin-top:8px">Dipakai saat server ini tidak bisa menjangkau SSI langsung.
+              Proxy diambil dari daftar publik, disaring ke IP Indonesia, lalu diuji sampai ada yang benar-benar bisa menarik satu halaman data.</p>
+          </details>
         </div>
-      </form>
-      <p class="field-error" id="loginInfo" role="alert"></p>
-      <details class="alt">
-        <summary>Cara lain: tempel cookie dari browser</summary>
-        <div class="row" style="margin-top:10px">
-          <div class="field" style="flex:1 1 320px">
-            <label for="cookie" class="sr">Cookie sesi</label>
-            <input id="cookie" placeholder="token_eksternal=…; refresh_token=…" spellcheck="false" />
-          </div>
-          <button class="btn" id="btnSession" type="button">Sambungkan</button>
+      </section>
+
+      <section class="panel" id="batchPanel">
+        <div class="panel-head">
+          <h2>Batch penugasan</h2>
+          <span class="caption">satu batch = satu periode</span>
         </div>
-      </details>
-    </div>
-  </section>
+        <div class="panel-body">
+          <p>Laporan memakai <strong>batch aktif</strong>. Setiap impor menempel ke batch yang dipilih,
+            jadi impor susulan tidak membuat batch baru.</p>
+          <div class="batch-list" id="batchList"></div>
+          <details class="alt">
+            <summary>Buat batch baru</summary>
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1 1 220px"><label for="nbName">Nama batch</label><input id="nbName" placeholder="mis. September" /></div>
+              <div class="field" style="flex:0 1 110px"><label for="nbYear">Tahun</label><input id="nbYear" inputmode="numeric" maxlength="4" placeholder="2026" /></div>
+              <button class="btn primary" id="btnNewBatch" type="button">Buat</button>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="panel" id="importPanel">
+          <div class="panel-head"><h2>Impor penugasan</h2></div>
+          <div class="panel-body">
+            <div class="flow">
+              <b>1</b> Pilih batch <span class="sep">›</span> <b>2</b> Pilih Excel <span class="sep">›</span> <b>3</b> Impor
+            </div>
+            <div class="field">
+              <label for="importBatch">Masukkan ke batch</label>
+              <select id="importBatch"></select>
+            </div>
+            <div class="row">
+              <input type="file" id="file" accept=".xlsx,.xls" class="sr" />
+              <label class="btn" for="file">Pilih Excel</label>
+              <span class="file-name" id="fileName">belum ada file</span>
+            </div>
+            <div class="row">
+              <button class="btn" id="btnAssignTemplate" type="button">Unduh template</button>
+              <button class="btn" id="btnInspect" type="button">Deteksi kolom</button>
+              <button class="btn" id="btnPrecheck" type="button" disabled>Pratinjau</button>
+              <button class="btn primary" id="btnImport" type="button" disabled>Impor</button>
+            </div>
+            <div class="bulk-result" id="precheckResult" hidden></div>
+            <details class="alt">
+              <summary>Format kolom &amp; aturan impor ulang</summary>
+              <p style="margin-top:10px"><strong>Unggah ulang mengganti isi batch</strong>: baris yang tidak ada di file baru akan hilang,
+                dan tanda manual lama tetap dipertahankan untuk NIK + petugas yang sama.</p>
+              <p><strong>Kolom wajib:</strong> <code>Petugas</code>, <code>NIK</code> (16 digit), <code>Tahun</code>.
+                Opsional: <code>Nama</code>, <code>Tanggal lahir</code>, <code>Tanggal target</code>, <code>Keterangan</code>.</p>
+              <p><strong>Kolom <code>Keterangan</code></strong> (opsional): alasan pasien gagal diinput —
+                <em>Data Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>. Kosongkan (atau tulis
+                <em>OK</em> / <em>sudah diinput</em> / <em>selesai</em>) untuk pasien yang berhasil. Tanda manual
+                (supervisor / massal) tetap dipertahankan saat impor ulang.</p>
+            </details>
+          </div>
+        </section>
+
+        <section class="panel" id="bulkPanel">
+          <div class="panel-head"><h2>Tanda tidak valid (Excel)</h2></div>
+          <div class="panel-body">
+            <p>Tandai banyak pasien sekaligus tanpa mengklik satu per satu.</p>
+            <div class="row">
+              <button class="btn" id="btnTemplate" type="button">Unduh template</button>
+              <input type="file" id="flagFile" accept=".xlsx,.xls" class="sr" />
+              <label class="btn" for="flagFile">Pilih Excel tanda</label>
+              <span class="file-name" id="flagFileName">belum ada file</span>
+            </div>
+            <div class="row">
+              <button class="btn primary" id="btnFlagImport" type="button" disabled>Terapkan tanda</button>
+            </div>
+            <div class="bulk-result" id="bulkResult" hidden></div>
+            <details class="alt">
+              <summary>Alasan yang dikenali</summary>
+              <p style="margin-top:10px">Isi kolom <code>NIK</code> dan <code>Alasan</code>:
+                <em>Tidak Valid</em>, <em>Faskes Lain</em>, atau <em>Data Hilang</em>.
+                <em>Data Hilang</em> untuk pasien yang diklaim sudah diinput tetapi tidak muncul di SSI saat ditarik.
+                Tanda hanya berlaku untuk pasien di batch aktif yang <em>belum</em> diinput; yang sudah diinput dilewati
+                dan dilaporkan. Tanda lama pada NIK yang sama diganti oleh isi file.</p>
+            </details>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid-2">
+        <section class="panel" id="rulePanel">
+          <div class="panel-head"><h2>Dasar hitung</h2></div>
+          <div class="panel-body">
+            <p>Berlaku untuk <strong>batch terpilih</strong> di panel impor. Semua tahun pada batch itu memakai aturan
+              yang sama, jadi angka capaian antar-periode tetap sebanding.</p>
+            <div class="field">
+              <label for="matchRule">Pasien dianggap diinput bila</label>
+              <select id="matchRule"></select>
+              <p class="field-help" id="matchRuleHelp"></p>
+            </div>
+            <p class="caption" id="matchRuleNow">—</p>
+          </div>
+        </section>
+
+        <section class="panel" id="setorPanel">
+          <div class="panel-head"><h2>Setoran petugas</h2><span class="caption">sisa pasien → Data Hilang</span></div>
+          <div class="panel-body">
+            <p><strong>Satu klik per petugas:</strong> semua pasien yang masih <em>belum diinput</em> ditandai
+              <em>Data Hilang</em>. Baris yang sudah diinput atau sudah punya tanda lain tidak disentuh.</p>
+            <div class="field">
+              <label for="setorPetugas">Pilih petugas</label>
+              <select id="setorPetugas"></select>
+            </div>
+            <p class="caption" id="setorInfo">—</p>
+            <div class="row">
+              <button class="btn primary" id="btnSetor" type="button" disabled>Tandai sudah setor</button>
+              <button class="btn" id="btnSetorBatal" type="button" disabled>Batalkan setoran</button>
+            </div>
+            <details class="alt">
+              <summary>Petugas yang sudah setor</summary>
+              <div class="setor-list" id="setorList"></div>
+            </details>
+          </div>
+        </section>
+      </div>
+
+      <section class="panel" id="exportPanel">
+        <div class="panel-head"><h2>Ekspor</h2></div>
+        <div class="panel-body">
+          <div class="row">
+            <a class="btn" href="/api/report.xlsx">Excel laporan</a>
+            <a class="btn" href="/api/report.pdf">PDF capaian petugas</a>
+          </div>
+          <p class="hint">Rekap per petugas dan detail pasien, termasuk sebab gagal dan catatan pegawai.</p>
+          <details class="alt">
+            <summary>Data mentah SSI</summary>
+            <p style="margin-top:10px">Seluruh kunjungan yang tersimpan, termasuk pasien yang belum masuk Excel penugasan.
+              NIK ditulis penuh — berkas ini untuk pemeriksaan internal.</p>
+            <div class="row">
+              <div class="field" style="flex:0 1 100px">
+                <label for="visitsYear">Tahun</label>
+                <input id="visitsYear" inputmode="numeric" maxlength="4" placeholder="semua" />
+              </div>
+              <a class="btn" id="btnVisits" href="/api/visits.xlsx">Unduh data mentah</a>
+              <span class="caption" id="visitsInfo">semua tahun</span>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel" id="sesi">
+        <div class="panel-head"><h2>Masuk ke SSI</h2><span class="caption">diperlukan untuk menarik data</span></div>
+        <div class="panel-body">
+          <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:14px">
+            <div class="row">
+              <div class="field" style="flex:1 1 240px">
+                <label for="email">Email SSI</label>
+                <input id="email" type="email" autocomplete="username" spellcheck="false" />
+              </div>
+              <div class="field" style="flex:1 1 200px">
+                <label for="password">Kata sandi</label>
+                <input id="password" type="password" autocomplete="current-password" />
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="code">Kode captcha</label>
+                <div class="captcha-row">
+                  <button type="button" class="captcha-btn" id="captchaBtn" title="Klik untuk ganti gambar" aria-label="Ganti gambar captcha">
+                    <img id="captcha" alt="Gambar captcha" />
+                    <span class="captcha-msg" id="captchaMsg">Klik untuk muat captcha</span>
+                  </button>
+                  <input id="code" inputmode="numeric" maxlength="6" autocomplete="off" />
+                </div>
+              </div>
+              <button class="btn primary" id="btnLogin" type="submit">Masuk</button>
+            </div>
+          </form>
+          <p class="field-error" id="loginInfo" role="alert"></p>
+          <details class="alt">
+            <summary>Cara lain: tempel cookie dari browser</summary>
+            <div class="row" style="margin-top:10px">
+              <div class="field" style="flex:1 1 320px">
+                <label for="cookie" class="sr">Cookie sesi</label>
+                <input id="cookie" placeholder="token_eksternal=…; refresh_token=…" spellcheck="false" />
+              </div>
+              <button class="btn" id="btnSession" type="button">Sambungkan</button>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Aktivitas</h2><span class="caption">jejak tindakan di halaman ini</span></div>
+        <div class="log" id="log" role="log" aria-live="polite"></div>
+      </section>
+    </main>
   </div>
-  </div>
+</div>
 
 <dialog class="gate" id="gate" aria-labelledby="gateTitle" aria-describedby="gateWhy">
   <form id="gateForm" novalidate>
@@ -549,8 +694,9 @@ function applyTheme(theme, persist) {
   // SVG punya atribut `hidden` sendiri, jadi .hidden/toggleAttribute tidak sinkron — pakai atribut.
   const moon = $('#themeBtn').querySelector('.i-moon');
   const sun = $('#themeBtn').querySelector('.i-sun');
-  if (dark) { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
-  else { moon.setAttribute('hidden', ''); sun.removeAttribute('hidden'); }
+  // Ikon menunjukkan aksi berikutnya, bukan keadaan sekarang.
+  if (dark) { moon.setAttribute('hidden', ''); sun.removeAttribute('hidden'); }
+  else { moon.removeAttribute('hidden'); sun.setAttribute('hidden', ''); }
   if (persist) { try { localStorage.setItem('monev-theme', theme); } catch (e) {} }
 }
 $('#themeBtn').addEventListener('click', () => {
@@ -902,6 +1048,8 @@ $('#file').addEventListener('change', () => {
   const f = $('#file').files?.[0];
   $('#fileName').textContent = f ? f.name : 'belum ada file';
   $('#btnImport').disabled = !f || !currentBatchId;
+  if ($('#btnPrecheck')) $('#btnPrecheck').disabled = !f;
+  if ($('#precheckResult')) $('#precheckResult').hidden = true;
 });
 
 /**
@@ -943,6 +1091,43 @@ $('#btnInspect').addEventListener('click', async () => {
     log('kolom terdeteksi: ' + cols.join(', '));
   } catch (e) {
     log('deteksi kolom gagal: ' + e.message, 'err');
+  } finally {
+    busy(btn, false);
+  }
+});
+
+/** Pratinjau: berapa NIK di file ini yang sudah punya kunjungan SSI pada tahunnya. */
+$('#btnPrecheck').addEventListener('click', async () => {
+  const btn = $('#btnPrecheck');
+  const box = $('#precheckResult');
+  busy(btn, true, 'Memeriksa…');
+  try {
+    const body = await filePayload();
+    const res = await apiFetch('/api/assign/precheck', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error);
+    if (!j.alreadyInSsi) {
+      box.innerHTML = '<div class="bs"><span>Diperiksa<b>' + fmt(j.total) + '</b></span>' +
+        '<span>Sudah ada di SSI<b>0</b></span></div>' +
+        '<p class="caption" style="margin-top:8px">Tidak ada NIK di file ini yang sudah punya kunjungan SSI pada tahun penugasannya.</p>';
+    } else {
+      box.innerHTML =
+        '<div class="bs"><span>Diperiksa<b>' + fmt(j.total) + '</b></span>' +
+        '<span>Sudah ada di SSI<b>' + fmt(j.alreadyInSsi) + '</b></span>' +
+        (j.skipped ? '<span>Dilewati<b>' + fmt(j.skipped) + '</b></span>' : '') + '</div>' +
+        '<h4>Kemungkinan sudah diinput sebelum dibagikan</h4>' +
+        '<ul>' + j.examples.map((r) =>
+          '<li>baris ' + fmt(r.rowNo) + ' — ' + esc(r.petugas) + ' · ' + esc(r.nik) +
+          (r.name ? ' · ' + esc(r.name) : '') + (r.year ? ' (' + r.year + ')' : '') + '</li>').join('') + '</ul>' +
+        (j.alreadyInSsi > j.examples.length ? '<p class="caption">… dan ' + fmt(j.alreadyInSsi - j.examples.length) + ' lainnya.</p>' : '');
+    }
+    box.hidden = false;
+    log('pratinjau: ' + fmt(j.alreadyInSsi) + ' dari ' + fmt(j.total) + ' NIK sudah punya kunjungan SSI', j.alreadyInSsi ? 'warn' : 'ok');
+  } catch (e) {
+    box.hidden = true;
+    log('pratinjau gagal: ' + e.message, 'err');
   } finally {
     busy(btn, false);
   }
@@ -1281,6 +1466,7 @@ async function loadCaptcha() {
     $('#code').value = '';
   } catch (e) {
     msg.textContent = 'Gagal dimuat. Klik untuk coba lagi.';
+    msg.hidden = false;
     log('captcha gagal dimuat: ' + e.message, 'err');
   } finally {
     btn.disabled = false;
@@ -1289,6 +1475,16 @@ async function loadCaptcha() {
 }
 
 $('#captchaBtn').addEventListener('click', loadCaptcha);
+
+/** Captcha baru dimuat ketika bagian "Masuk ke SSI" benar-benar terlihat. */
+if ('IntersectionObserver' in window && $('#sesi')) {
+  const io = new IntersectionObserver((entries) => {
+    if (entries.some((e) => e.isIntersecting) && !$('#captcha').getAttribute('src') && !captchaId) {
+      loadCaptcha();
+    }
+  }, { rootMargin: '200px' });
+  io.observe($('#sesi'));
+}
 
 $('#loginForm').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -1403,8 +1599,8 @@ $('#gateForm').addEventListener('submit', async (event) => {
     if (unlocked) {
       $('#app').hidden = false;
       log('admin dibuka');
-      await loadStatus();
-      await probe(false);
+      // Gerbang baru dibuka: data belum pernah dimuat (init berhenti saat halaman terkunci).
+      await bootData();
     }
   } catch (e) {
     $('#gateError').textContent = 'Tidak bisa menghubungi server.';
@@ -1422,27 +1618,57 @@ $('#btnLogout').addEventListener('click', async () => {
   location.href = '/';
 });
 
-/* init: gerbang dulu, baru muat data */
-(async function init() {
-  const ok = await checkGate();
-  if (!ok) return;
+/**
+ * Muat seluruh data halaman. Dipanggil dari dua tempat: init (cookie admin masih berlaku)
+ * dan submit gerbang (baru saja dibuka). Tanpa ini, halaman yang dibuka dari gerbang
+ * menampilkan daftar batch kosong.
+ */
+async function bootData() {
   // Dimuat terpisah: kegagalan satu bagian (mis. sesi SSI) tidak boleh mengosongkan
   // daftar batch atau daftar petugas.
   try {
+    // loadBatches() juga memuat daftar petugas (dipakai panel setoran); memanggilnya
+    // lagi di sini berarti dua permintaan /api/report yang identik.
     await loadBatches();
   } catch (e) {
     log('gagal memuat batch: ' + e.message, 'err');
   }
-  loadPerPetugas();
   try {
     await loadStatus();
     await probe(false);
-    // Form login tersedia di kedua mode; captcha dimuat saat bagiannya dibuka.
+    // Form login tersedia di kedua mode; captcha dimuat saat bagiannya dibuka,
+    // baik lewat URL #sesi maupun tautan sidebar.
     if (location.hash === '#sesi') loadCaptcha();
   } catch (e) {
     log('gagal memuat status: ' + e.message, 'err');
   }
+}
+
+/* navigasi sidebar: sorot bagian yang sedang terlihat */
+(function sidebarNav() {
+  const links = [...document.querySelectorAll('.side nav a')];
+  if (!links.length || !('IntersectionObserver' in window)) return;
+  const target = new Map(links.map((a) => [a.getAttribute('href').slice(1), a]));
+  const spy = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      const link = target.get(e.target.id);
+      if (!link) continue;
+      links.forEach((a) => a.removeAttribute('aria-current'));
+      link.setAttribute('aria-current', 'page');
+    }
+  }, { rootMargin: '-15% 0px -70% 0px' });
+  for (const id of target.keys()) {
+    const el = document.getElementById(id);
+    if (el) spy.observe(el);
+  }
+})();
+
+/* init: gerbang dulu, baru muat data */
+(async function init() {
+  const ok = await checkGate();
+  if (!ok) return;
+  await bootData();
 })();
 </script>
 </body>
-</html>

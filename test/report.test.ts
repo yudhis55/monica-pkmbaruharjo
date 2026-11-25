@@ -170,14 +170,28 @@ test('PDF capaian muat satu halaman dan tidak memotong tabel', async () => {
   assert.ok(!text.includes('Diinput = pasien'), 'footer tidak boleh tercetak lagi');
   assert.ok(text.includes('startxref'));
 
-  assert.throws(
-    () => buildCapaianPdf({
-      title: 't', meta: [],
-      rows: Array.from({ length: PDF_MAX_ROWS + 1 }, () => ({ petugas: 'X', assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 })),
-      total: { petugas: 'TOTAL', assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 },
-    }),
-    /satu halaman/,
-  );
+  // Lebih dari satu halaman: daftar dipecah, bukan melempar galat. Batch nyata berisi
+  // 63 petugas, jadi perilaku lama membuat tombol "Unduh PDF" selalu gagal.
+  const many = buildCapaianPdf({
+    title: 't', meta: [],
+    rows: Array.from({ length: PDF_MAX_ROWS + 10 }, (_, i) => ({ petugas: 'X' + (i + 1), assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 })),
+    total: { petugas: 'TOTAL', assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 },
+  });
+  const manyText = many.toString('latin1');
+  assert.match(manyText, /\/Count 2\b/, 'kelebihan baris pindah ke halaman kedua');
+  assert.equal(manyText.slice(0, 8), '%PDF-1.4');
+  assert.ok(manyText.includes('TOTAL'), 'baris total tetap dicetak');
+  assert.match(manyText, /Halaman 1 dari 2/);
+  assert.match(manyText, /Halaman 2 dari 2/);
+
+  // Tepat penuh: total tidak boleh hilang, jadi dibuat halaman tambahan.
+  const exact = buildCapaianPdf({
+    title: 't', meta: [],
+    rows: Array.from({ length: PDF_MAX_ROWS }, () => ({ petugas: 'X', assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 })),
+    total: { petugas: 'TOTAL', assigned: 1, diinput: 1, gagal: 0, belum: 0, pct: 100 },
+  }).toString('latin1');
+  assert.match(exact, /\/Count 2\b/);
+  assert.ok(exact.includes('TOTAL'), 'total tidak boleh hilang saat halaman tepat penuh');
 });
 
 test('capaian menghitung gagal ditandai sebagai selesai', () => {

@@ -744,17 +744,20 @@ function renderSyncNote() {
  * laporan, PDF, dan unduhan selalu merujuk ke himpunan data yang sama.
  */
 async function loadBatches() {
+  let j = null;
   try {
-    const j = await (await fetch('/api/batches')).json();
+    j = await (await fetch('/api/batches')).json();
     state.batches = j.batches ?? [];
   } catch (e) {
     state.batches = [];
   }
   const sel = $('#batchSelect');
   if (!sel) return;
-  // Default = batch terbaru yang punya isi; batch kosong (baru dibuat) jangan jadi pilihan awal.
+  // Default = batch yang dipakai server (batch aktif terbaru). Server mengirimnya eksplisit
+  // supaya halaman ini tidak menebak dari urutan daftar.
   const firstWithRows = state.batches.find((b) => Number(b.row_count ?? 0) > 0);
-  const current = state.batch ?? firstWithRows?.id ?? state.batches[0]?.id ?? null;
+  const serverCurrent = state.batches.some((b) => b.id === j?.currentId) ? j.currentId : null;
+  const current = state.batch ?? serverCurrent ?? firstWithRows?.id ?? state.batches[0]?.id ?? null;
   sel.innerHTML = state.batches.length
     ? state.batches.map((b) => {
         const year = b.period_start ? String(b.period_start).slice(0, 4) : '';
