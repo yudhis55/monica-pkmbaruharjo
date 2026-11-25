@@ -83,7 +83,7 @@ export async function buildApp() {
   // Penandaan hasil dan unduhan daftar pasien (NIK penuh) kini hanya untuk admin:
   // menyembunyikan tombolnya saja tidak cukup, endpoint-nya harus menolak juga.
   const ADMIN_PATHS = ['/api/sync', '/api/detail', '/api/session', '/api/ingest', '/api/assign', '/api/batches',
-    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/visits.xlsx', '/api/settings', '/api/diag'];
+    '/api/flags/set', '/api/flags/bulk', '/api/flags/import', '/api/petugas', '/api/patients', '/api/patients.xlsx', '/api/visits.xlsx', '/api/settings', '/api/diag', '/api/proxy'];
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url.split('?')[0];
     if (url === '/api/admin') return;
