@@ -46,11 +46,13 @@ Batasan yang perlu diketahui:
 
 - Proxy gratis berumur menit. Satu proxy yang lolos uji bisa mati 30 detik kemudian; karena
   itu pool menyimpan banyak kandidat dan pemakaian berganti saat gagal.
-- Sapuan penuh lewat proxy **tidak selesai dalam satu request**. Batas fungsi Vercel 300 dtk,
-  sedangkan 2026 (±8.000 baris) butuh beberapa menit; aplikasi memecahnya sendiri: satu
-  request mengambil sebagian halaman lalu `done:false`, dan pemanggilan berikutnya
-  melanjutkan dari cursor yang tersimpan. Klik **Tarik data SSI** beberapa kali sampai
-  `done:true`. Dari PC puskesmas, sapuan yang sama selesai 27 detik dalam satu kali.
+- Sapuan lewat proxy **dipecah per bulan**, satu bulan per panggilan, dengan progres di
+  `sweep.month`. Alasannya terukur: rentang setahun gagal `500` pada offset besar, sedangkan
+  per bulan lolos. Klik **Tarik data SSI** berulang sampai `done:true` — 12 kali untuk
+  setahun. Dari PC puskesmas, sapuan setahun selesai 27 detik dalam satu kali.
+- Terukur 25 Nov 2026 dari prod (Vercel, lewat proxy): 2026 penuh selesai 12 panggilan,
+  tiap bulan 0,3–106 dtk; total 8.094 baris. Satu bulan bisa gagal (proxy mati) dan
+  diulang tanpa kehilangan bulan lain karena progresnya tersimpan.
 - Proxy **tidak dipakai untuk login**: captcha 4 karakter tetap harus diketik manusia, dan
   kata sandi tidak boleh melewati server orang lain. Login sekali dari PC puskesmas; token
   tersimpan di tabel `session` dan dipakai prod untuk membaca.
