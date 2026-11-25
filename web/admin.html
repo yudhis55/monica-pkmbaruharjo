@@ -234,13 +234,15 @@
   .flow b { display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 600; }
   .flow .sep { color: var(--line); }
 
-  .notice { display: flex; gap: 10px; padding: 12px 14px; border-radius: var(--r-sm); font-size: 13.5px; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); }
+  /* Bukan flex: isinya kalimat panjang dengan <strong> di tengah. Sebagai flex container
+     anak-anak teksnya menjadi item sendiri-sendiri dan kalimatnya pecah jadi kolom. */
+  .notice { padding: 12px 14px; border-radius: var(--r-sm); font-size: 13.5px; line-height: 1.6; border: 1px solid var(--line); background: var(--panel-2); color: var(--muted); margin: 0; }
   .notice[data-tone="warn"] { background: var(--warn-bg); border-color: color-mix(in srgb, var(--warn) 30%, transparent); color: var(--warn); }
   .notice[data-tone="ok"] { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 30%, transparent); color: var(--ok); }
   .notice[data-tone="bad"] { background: var(--alert-bg); border-color: color-mix(in srgb, var(--alert) 30%, transparent); color: var(--alert); }
   .notice[hidden] { display: none; }
   #ssiNotice { display: none; }
-  body.no-ssi #ssiNotice { display: flex; }
+  body.no-ssi #ssiNotice { display: block; }
   body.no-ssi #btnProbe, body.no-ssi #probeHelp { display: none; }
   body.no-ssi #btnSync::after, body.no-ssi #btnLogin::after { content: " · proxy"; font-weight: 400; opacity: .7; }
 
