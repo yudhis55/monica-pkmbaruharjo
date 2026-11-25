@@ -17,11 +17,13 @@
   })();
 </script>
 <style>
-  body.no-ssi #btnProbe, body.no-ssi #btnRefresh, body.no-ssi #btnSync,
-  body.no-ssi #sesi, body.no-ssi #sweepRow, body.no-ssi #sweepHelp,
+  /* Tanpa jalur langsung ke SSI (Vercel), login manual tidak mungkin: form sandi dan
+     tombol cek sesi disembunyikan. Menarik data TETAP tersedia lewat pool proxy. */
+  body.no-ssi #btnProbe, body.no-ssi #btnRefresh, body.no-ssi #sesi,
   body.no-ssi #probeHelp { display: none; }
   #ssiNotice { display: none; }
   body.no-ssi #ssiNotice { display: block; }
+  body.no-ssi #btnSync::after { content: " (lewat proxy)"; font-weight: 400; opacity: .75; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
@@ -291,6 +293,13 @@
       </div>
       <p id="sweepHelp">Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
         Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
+      <div class="row" id="proxyRow" style="align-items:center;margin-top:14px;gap:10px">
+        <button class="btn" id="btnProxyRefresh" type="button">Segarkan pool proxy</button>
+        <span class="caption" id="proxyInfo">memeriksa…</span>
+      </div>
+      <p class="caption" id="proxyHelp">Dipakai saat server ini tidak bisa menjangkau SSI langsung.
+        Proxy diambil dari daftar publik, disaring ke IP Indonesia, lalu diuji sampai ada yang
+        benar-benar bisa menarik satu halaman data. Hanya yang lolos uji dipakai.</p>
       <p id="probeHelp">Pemeriksaan sesi berjalan otomatis setiap halaman dibuka (sekali per menit). Tombol di atas untuk memaksa pemeriksaan saat Anda butuh.</p>
     </div>
     <div class="log" id="log" role="log" aria-live="polite"></div>
@@ -618,17 +627,57 @@ async function loadStatus() {
   canFetchSsi = s.ssiFetchAvailable !== false;
   document.body.classList.toggle('no-ssi', !canFetchSsi);
   if (!canFetchSsi) {
-    $('#stSession').textContent = 'di PC puskesmas';
-    $('#stSession').dataset.tone = 'warn';
-    $('#stSessionSub').textContent = 'SSI menolak koneksi dari server ini (403)';
+    // Sesi SSI hanya bisa diperiksa lewat proxy; statusnya diambil dari proxyStats.
+    $('#stSession').textContent = 'lewat proxy';
+    $('#stSession').dataset.tone = s.hasSession ? 'ok' : 'warn';
+    $('#stSessionSub').textContent = s.hasSession
+      ? 'token tersimpan, ' + clock(s.sessionUpdatedAt)
+      : 'belum ada token — login sekali dari PC puskesmas';
+    loadProxyInfo();
     return s;
   }
+  loadProxyInfo();
   const need = !s.hasSession || Boolean(s.sessionError);
   $('#stSession').textContent = need ? 'tidak aktif' : 'aktif';
   $('#stSession').dataset.tone = need ? 'bad' : 'ok';
   $('#stSessionSub').textContent = s.sessionError ?? (s.hasSession ? 'diperbarui ' + clock(s.sessionUpdatedAt) : 'belum ada sesi tersimpan');
   return s;
 }
+
+/** Status pool proxy: berapa yang lolos uji dan mana yang akan dipakai. */
+async function loadProxyInfo() {
+  try {
+    const j = await (await apiFetch('/api/proxy/stats')).json();
+    const st = j.stats ?? {};
+    const parts = [];
+    parts.push(st.dataOk ? st.dataOk + ' siap dipakai' : 'belum ada yang lolos uji');
+    if (st.cryptoOk > st.dataOk) parts.push((st.cryptoOk - st.dataOk) + ' baru lolos crypto-key');
+    if (st.total) parts.push('pool ' + st.total);
+    if (st.lastChecked) parts.push('diuji ' + relTime(st.lastChecked));
+    if (j.transport && j.transport !== 'langsung') parts.push('aktif: ' + j.transport);
+    $('#proxyInfo').textContent = parts.join(' · ');
+  } catch (e) {
+    $('#proxyInfo').textContent = 'status proxy tidak terbaca: ' + e.message;
+  }
+}
+
+$('#btnProxyRefresh').addEventListener('click', async () => {
+  const btn = $('#btnProxyRefresh');
+  busy(btn, true, 'Menyegarkan… (1–3 menit)');
+  try {
+    const res = await apiFetch('/api/proxy/refresh', { method: 'POST' });
+    const j = await res.json();
+    if (!res.ok) throw new Error(j.error ?? 'gagal');
+    log('pool proxy: ' + j.indonesian + ' IP Indonesia dari ' + j.fetched + ' entri, '
+      + j.probed + ' diuji → ' + j.cryptoOk + ' lolos crypto-key, ' + j.dataOk + ' siap sync'
+      + ' (' + Math.round(j.ms / 1000) + ' dtk)');
+    await loadProxyInfo();
+  } catch (e) {
+    log('gagal menyegarkan pool proxy: ' + e.message, 'err');
+  } finally {
+    busy(btn, false, null, 'Segarkan pool proxy');
+  }
+});
 
 async function probe(force) {
   if (!canFetchSsi) return { state: 'unavailable' };
@@ -692,6 +741,7 @@ $('#btnSync').addEventListener('click', async () => {
     if (res.error) throw new Error(res.error);
     log('selesai: ' + fmt(res.fetched) + ' baris / ' + res.pages + ' halaman · +' + res.inserted + ' baru · ~' + res.updated + ' berubah');
     await loadStatus();
+    await loadProxyInfo();
     busy(btn, false, null, 'Tarik ulang');
   } catch (e) {
     log('tarik data gagal: ' + e.message, 'err');

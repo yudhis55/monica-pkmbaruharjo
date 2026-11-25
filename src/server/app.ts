@@ -12,6 +12,8 @@ import { runDetailFetch } from '../core/detailRun.ts';
 import { refreshSession } from '../core/ssi/session.ts';
 import { BASE_URL, REFERER, USER_AGENT } from '../core/ssi/http.ts';
 import { fetchProxyPool, openProxySession, parseProxy, PROXY_SOURCES } from '../core/ssi/proxyFetch.ts';
+import { pickWorkingProxy, refreshProxyPool, runWithProxy } from '../core/ssi/proxyPool.ts';
+import { getTransport, useDirectTransport, useProxyTransport } from '../core/ssi/transport.ts';
 import { encryptPayload, setClientKey } from '../core/ssi/crypto.ts';
 import { fetchCaptcha, submitLogin } from '../core/ssi/login.ts';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -1005,24 +1007,40 @@ export async function buildApp() {
     if (syncing || !(await store.claimSync(owner))) return reply.code(409).send({ error: 'Sweep SSI sedang berjalan di proses lain.' });
     syncing = true;
     const runId = await store.startRun();
+    let viaProxy: string | null = null;
     try {
-      await ensureFreshSession(store);
+      // Di instance tanpa jalur langsung ke SSI (Vercel: 403 dari IP cloud), sync hanya
+      // mungkin lewat proxy Indonesia. Proxy dipilih dan diganti oleh runWithProxy; cursor
+      // sweep di DB membuat percobaan ulang melanjutkan halaman yang sama, bukan mengulang.
       const q = (req.query ?? {}) as { pages?: string };
       const maxPages = q.pages ? Math.max(1, Number(q.pages)) : (CONFIG.syncMaxPages > 0 ? CONFIG.syncMaxPages : undefined);
-      const res = await runSync(store, {
-        maxPages,
-        maxMs: CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : undefined,
-        faskesCode: CONFIG.faskesCode,
-        startDate,
-        endDate,
-        pageSize: CONFIG.pageSize,
-        userId: CONFIG.userId,
-        fullname: CONFIG.fullname,
-        partnerCode: CONFIG.partnerCode,
-        userType: CONFIG.userType,
-        // Lease diperpanjang tiap halaman: sweep panjang tidak kehilangan lock di tengah jalan.
-        onProgress: () => { void store.renewSync(owner).catch(() => { /* lease dicoba lagi di halaman berikutnya */ }); },
-      });
+      const runOnce = async () => {
+        await ensureFreshSession(store);
+        return runSync(store, {
+          maxPages,
+          maxMs: CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : undefined,
+          faskesCode: CONFIG.faskesCode,
+          startDate,
+          endDate,
+          pageSize: CONFIG.pageSize,
+          userId: CONFIG.userId,
+          fullname: CONFIG.fullname,
+          partnerCode: CONFIG.partnerCode,
+          userType: CONFIG.userType,
+          // Lease diperpanjang tiap halaman: sweep panjang tidak kehilangan lock di tengah jalan.
+          onProgress: () => { void store.renewSync(owner).catch(() => { /* lease dicoba lagi di halaman berikutnya */ }); },
+        });
+      };
+
+      let res: Awaited<ReturnType<typeof runSync>>;
+      if (CONFIG.ssiFetch) {
+        res = await runOnce();
+      } else {
+        const run = await runWithProxy(store, CONFIG.faskesCode, runOnce);
+        viaProxy = run.proxy;
+        res = run.value;
+        if (run.attempts > 1) console.log(`[sync] proxy ke-${run.attempts} berhasil: ${run.proxy}`);
+      }
       await store.finishRun(runId, {
         status: res.ok ? 'ok' : 'failed', pages: res.pages, fetched: res.fetched,
         inserted: res.inserted, updated: res.updated, message: res.message,
@@ -1032,10 +1050,26 @@ export async function buildApp() {
       await store.finishRun(runId, { status: 'error', message: String(e?.message ?? e) });
       return reply.code(500).send({ error: String(e?.message ?? e) });
     } finally {
+      if (viaProxy) useDirectTransport();
       await store.releaseSync(owner);
       syncing = false;
     }
   });
+
+  /** Segarkan pool proxy: unduh semua sumber, saring IP Indonesia, uji, simpan. */
+  app.post('/api/proxy/refresh', async (req) => {
+    const q = (req.query ?? {}) as { limit?: string };
+    const limit = q.limit ? Math.max(20, Math.min(Number(q.limit), 800)) : 300;
+    const res = await refreshProxyPool(store, { limit, faskesCode: CONFIG.faskesCode });
+    return { ...res, stats: await store.proxyStats() };
+  });
+
+  app.get('/api/proxy/stats', async () => ({
+    stats: await store.proxyStats(),
+    working: await store.workingProxies(10),
+    transport: getTransport().label,
+    directAvailable: CONFIG.ssiFetch,
+  }));
 
   // Prod berjalan tanpa campur tangan: perpanjang sesi sebelum kedaluwarsa.
   // refresh_token single-use, jadi selalu lewat kunci tulis DB.

@@ -144,6 +144,21 @@ CREATE TABLE IF NOT EXISTS app_setting (
   value      TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- Pool proxy untuk menarik data dari instance tanpa jalur langsung ke SSI (Vercel).
+-- Menyimpan hasil uji terakhir supaya pemilihan proxy tidak perlu menguji ulang.
+CREATE TABLE IF NOT EXISTS proxy_pool (
+  addr          TEXT PRIMARY KEY,
+  scheme        TEXT NOT NULL,
+  crypto_ok     INTEGER NOT NULL DEFAULT 0,
+  data_ok       INTEGER NOT NULL DEFAULT 0,
+  latency_ms    INTEGER,
+  last_checked  TEXT,
+  last_ok_at    TEXT,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  last_error    TEXT
+);
+CREATE INDEX IF NOT EXISTS proxy_pool_rank ON proxy_pool (data_ok DESC, crypto_ok DESC, latency_ms);
 `;
 
 export const SCHEMA_PG = `-- Padanan Postgres dari schema.sql. PRAGMA dihapus; AUTOINCREMENT menjadi identity.
@@ -285,4 +300,18 @@ CREATE TABLE IF NOT EXISTS app_setting (
   value      TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
+
+-- Pool proxy untuk menarik data dari instance tanpa jalur langsung ke SSI (Vercel).
+CREATE TABLE IF NOT EXISTS proxy_pool (
+  addr          TEXT PRIMARY KEY,
+  scheme        TEXT NOT NULL,
+  crypto_ok     INTEGER NOT NULL DEFAULT 0,
+  data_ok       INTEGER NOT NULL DEFAULT 0,
+  latency_ms    INTEGER,
+  last_checked  TEXT,
+  last_ok_at    TEXT,
+  fail_count    INTEGER NOT NULL DEFAULT 0,
+  last_error    TEXT
+);
+CREATE INDEX IF NOT EXISTS proxy_pool_rank ON proxy_pool (data_ok DESC, crypto_ok DESC, latency_ms);
 `;

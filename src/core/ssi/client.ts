@@ -1,7 +1,8 @@
 import { decryptResponse, encryptPayload, setClientKey } from './crypto.ts';
 import {
-  BASE_URL, DEFAULT_TIMEOUT_MS, REFERER, USER_AGENT, cookieHeader, readSetCookies, withRetry,
+  BASE_URL, DEFAULT_TIMEOUT_MS, REFERER, USER_AGENT, cookieHeader, withRetry,
 } from './http.ts';
+import { getTransport } from './transport.ts';
 import type { SsiPage, SsiUser } from './types.ts';
 
 /** Hanya `token_eksternal` yang divalidasi server. `ctk`/`stk` dibuat ulang tiap run. */
@@ -30,12 +31,20 @@ export class SsiSessionError extends Error {
 
 export async function fetchCryptoPair(timeoutMs = 30_000): Promise<{ stk: string; ctk: string }> {
   const res = await withRetry('crypto-key', async () => {
-    const r = await fetch(`${BASE_URL}/api/crypto-key`, {
+    // Lewat transport, bukan fetch langsung: di Vercel jalur ini harus memakai proxy.
+    const r = await getTransport().request('/api/crypto-key', {
+      method: 'GET',
       headers: { accept: 'application/json', 'user-agent': USER_AGENT },
-      signal: AbortSignal.timeout(timeoutMs),
+      timeoutMs,
     });
-    if (!r.ok) throw Object.assign(new Error(`crypto-key HTTP ${r.status}`), { status: r.status });
-    return readSetCookies(r);
+    if (r.status !== 200) throw Object.assign(new Error(`crypto-key HTTP ${r.status}`), { status: r.status });
+    const jar: Record<string, string> = {};
+    for (const line of r.setCookies) {
+      const first = line.split(';')[0];
+      const i = first.indexOf('=');
+      if (i > 0) jar[first.slice(0, i).trim()] = first.slice(i + 1).trim();
+    }
+    return jar;
   });
   if (!res.asik_web_stk || !res.asik_web_ctk) throw new Error('crypto-key: cookie stk/ctk tidak diterbitkan');
   // Nilai cookie ctk di-URL-encode server; HPKE butuh base64 mentah.
@@ -105,7 +114,7 @@ export async function ssiPost<T = any>(
     setClientKey(current.asikWebCtk);
     const plaintext = { user: current.user, ...payload };
     const encrypted = await encryptPayload(plaintext);
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const res = await getTransport().request(path, {
       method: 'POST',
       headers: {
         accept: 'application/json',
@@ -116,14 +125,14 @@ export async function ssiPost<T = any>(
         cookie: authCookie(current),
       },
       body: JSON.stringify({ _d: encrypted }),
-      signal: AbortSignal.timeout(timeoutMs),
+      timeoutMs,
     });
 
-    const text = await res.text();
+    const text = res.body;
     let body: any = text;
     try { body = text ? JSON.parse(text) : null; } catch { /* biarkan teks mentah */ }
 
-    if (!res.ok) {
+    if (res.status < 200 || res.status >= 300) {
       if (res.status === 401) {
         const code = body?.data?.meta?.system_message ?? body?.code;
         throw new SsiSessionError(body?.message ?? 'Sesi berakhir', 401, code);
@@ -194,10 +203,11 @@ export async function listKunjunganUmum(args: ListArgs, auth: SsiAuth, options: 
  * Status filter `list-kunjungan-umum` tidak berfungsi (total sama untuk semua nilai) — jangan dipakai.
  */
 export async function fetchSessionUser(auth: SsiAuth): Promise<any> {
-  const res = await fetch(`${BASE_URL}/api/user-management/menu`, {
+  const res = await getTransport().request('/api/user-management/menu', {
+    method: 'GET',
     headers: { accept: 'application/json', cookie: authCookie(auth), 'user-agent': USER_AGENT },
-    signal: AbortSignal.timeout(30_000),
+    timeoutMs: 30_000,
   });
-  if (!res.ok) throw new SsiSessionError('Sesi tidak valid', res.status);
-  return res.json();
+  if (res.status !== 200) throw new SsiSessionError('Sesi tidak valid', res.status);
+  return JSON.parse(res.body);
 }

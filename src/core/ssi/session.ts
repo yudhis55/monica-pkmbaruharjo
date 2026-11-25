@@ -1,4 +1,5 @@
-import { BASE_URL, REFERER, USER_AGENT, readSetCookies, withRetry } from './http.ts';
+import { BASE_URL, REFERER, USER_AGENT, withRetry } from './http.ts';
+import { getTransport } from './transport.ts';
 
 export interface SessionState {
   tokenEksternal: string;
@@ -27,7 +28,8 @@ const LOCK = 'session-refresh';
 
 export async function refreshSession(current: SessionState): Promise<RefreshResult> {
   const res = await withRetry('refresh-token', async () => {
-    const r = await fetch(`${BASE_URL}/api/user-management/refresh-token`, {
+    // Lewat transport: di Vercel refresh pun harus lewat proxy yang sama.
+    const r = await getTransport().request('/api/user-management/refresh-token', {
       method: 'POST',
       headers: {
         accept: 'application/json',
@@ -36,12 +38,18 @@ export async function refreshSession(current: SessionState): Promise<RefreshResu
         'user-agent': USER_AGENT,
         cookie: `token_eksternal=${current.tokenEksternal}; refresh_token=${current.refreshToken}`,
       },
-      signal: AbortSignal.timeout(30_000),
+      timeoutMs: 30_000,
     });
-    const text = await r.text();
+    const text = r.body;
     let body: any = text;
     try { body = text ? JSON.parse(text) : null; } catch { /* teks mentah */ }
-    return { status: r.status, body, cookies: readSetCookies(r) };
+    const cookies: Record<string, string> = {};
+    for (const line of r.setCookies) {
+      const first = line.split(';')[0];
+      const i = first.indexOf('=');
+      if (i > 0) cookies[first.slice(0, i).trim()] = first.slice(i + 1).trim();
+    }
+    return { status: r.status, body, cookies };
   }).catch((err: any) => ({ status: 0, body: { message: String(err?.message ?? err) }, cookies: {} as Record<string, string>, network: true }));
 
   if (res.status === 200) {

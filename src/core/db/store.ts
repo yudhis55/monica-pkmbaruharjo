@@ -763,6 +763,80 @@ export class Store {
       .run([key, value, new Date().toISOString()]);
   }
 
+  /* ------------------------------------------------------------- pool proxy */
+
+  /**
+   * Simpan hasil uji satu proxy. `data_ok` hanya 1 bila satu halaman data benar-benar
+   * terambil (bukan sekadar crypto-key), karena itu yang menentukan bisa/tidaknya sync.
+   */
+  async saveProxyResult(r: {
+    addr: string; scheme: string; cryptoOk: boolean; dataOk: boolean;
+    latencyMs?: number | null; error?: string | null;
+  }) {
+    const now = new Date().toISOString();
+    await this.db.prepare(`
+      INSERT INTO proxy_pool (addr, scheme, crypto_ok, data_ok, latency_ms, last_checked, last_ok_at, fail_count, last_error)
+      VALUES (?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(addr) DO UPDATE SET
+        scheme = excluded.scheme,
+        crypto_ok = excluded.crypto_ok,
+        data_ok = excluded.data_ok,
+        latency_ms = excluded.latency_ms,
+        last_checked = excluded.last_checked,
+        last_ok_at = CASE WHEN excluded.data_ok = 1 THEN excluded.last_ok_at ELSE proxy_pool.last_ok_at END,
+        fail_count = CASE WHEN excluded.crypto_ok = 1 THEN 0 ELSE proxy_pool.fail_count + 1 END,
+        last_error = excluded.last_error
+    `).run([
+      r.addr, r.scheme, r.cryptoOk ? 1 : 0, r.dataOk ? 1 : 0,
+      r.latencyMs ?? null, now, now, 0, r.error ?? null,
+    ]);
+  }
+
+  /** Proxy yang pernah berhasil menarik data, tercepat lebih dulu. */
+  async workingProxies(limit = 20): Promise<Array<{ addr: string; scheme: string; latency_ms: number | null }>> {
+    return this.db.prepare(`
+      SELECT addr, scheme, latency_ms FROM proxy_pool
+       WHERE data_ok = 1
+       ORDER BY COALESCE(latency_ms, 999999), last_ok_at DESC
+       LIMIT ?
+    `).all<{ addr: string; scheme: string; latency_ms: number | null }>([limit]);
+  }
+
+  /** Kandidat yang layak dicoba ulang: pernah lolos crypto-key tetapi belum data. */
+  async proxyCandidates(limit = 60): Promise<Array<{ addr: string; scheme: string }>> {
+    return this.db.prepare(`
+      SELECT addr, scheme FROM proxy_pool
+       WHERE data_ok = 0 AND crypto_ok = 1
+       ORDER BY fail_count ASC, last_checked DESC
+       LIMIT ?
+    `).all<{ addr: string; scheme: string }>([limit]);
+  }
+
+  async proxyStats(): Promise<{ total: number; dataOk: number; cryptoOk: number; lastChecked: string | null }> {
+    const row = await this.db.prepare(`
+      SELECT COUNT(*) AS total,
+             SUM(CASE WHEN data_ok = 1 THEN 1 ELSE 0 END) AS data_ok,
+             SUM(CASE WHEN crypto_ok = 1 THEN 1 ELSE 0 END) AS crypto_ok,
+             MAX(last_checked) AS last_checked
+        FROM proxy_pool
+    `).get<any>();
+    return {
+      total: Number(row?.total ?? 0),
+      dataOk: Number(row?.data_ok ?? 0),
+      cryptoOk: Number(row?.crypto_ok ?? 0),
+      lastChecked: row?.last_checked ?? null,
+    };
+  }
+
+  /** Buang entri yang sudah lama tidak pernah berhasil, supaya tabel tidak menggelembung. */
+  async pruneProxies(olderThanDays = 7): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanDays * 86_400_000).toISOString();
+    const r = await this.db.prepare(
+      `DELETE FROM proxy_pool WHERE data_ok = 0 AND (last_checked IS NULL OR last_checked < ?)`,
+    ).run([cutoff]);
+    return Number(r.changes ?? 0);
+  }
+
   /** Tutup run yang tertinggal 'running' oleh proses yang sudah mati. */
   async recoverInterrupted(): Promise<number> {
     const r = await this.db
