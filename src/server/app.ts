@@ -1025,14 +1025,39 @@ export async function buildApp() {
       const maxMs = proxyMode
         ? Math.min(CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : 180_000, 180_000)
         : (CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : undefined);
-      const runOnce = async () => {
+      /**
+       * Mode proxy: rentang lebar gagal 500 pada offset besar (terukur 23 dan 25 Nov 2026),
+       * sedangkan per bulan lolos. Karena itu sapuan dipecah per bulan, dengan progres
+       * disimpan di `sweep.month` supaya panggilan berikutnya melanjutkan bulan berikutnya.
+       */
+      const monthKey = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
+      const monthsBetween = (from: string, to: string): Array<{ start: string; end: string }> => {
+        const out: Array<{ start: string; end: string }> = [];
+        const startD = new Date(`${from}T00:00:00Z`);
+        const endD = new Date(`${to}T00:00:00Z`);
+        if (Number.isNaN(startD.getTime()) || Number.isNaN(endD.getTime())) return out;
+        let y = startD.getUTCFullYear();
+        let m = startD.getUTCMonth();
+        while (y < endD.getUTCFullYear() || (y === endD.getUTCFullYear() && m <= endD.getUTCMonth())) {
+          const first = new Date(Date.UTC(y, m, 1));
+          const last = new Date(Date.UTC(y, m + 1, 0));
+          const s1 = first.toISOString().slice(0, 10);
+          const s2 = last.toISOString().slice(0, 10);
+          out.push({ start: s1 > from ? s1 : from, end: s2 < to ? s2 : to });
+          m++;
+          if (m > 11) { m = 0; y++; }
+        }
+        return out;
+      };
+
+      const runOnce = async (range: { start: string; end: string } = { start: startDate, end: endDate }) => {
         await ensureFreshSession(store);
         return runSync(store, {
           maxPages,
           maxMs,
           faskesCode: CONFIG.faskesCode,
-          startDate,
-          endDate,
+          startDate: range.start,
+          endDate: range.end,
           pageSize,
           // Lewat proxy: 2 percobaan, 45 dtk per request. Proxy buruk harus cepat gugur
           // supaya runWithProxy sempat berpindah ke kandidat berikutnya.
@@ -1051,10 +1076,27 @@ export async function buildApp() {
       if (CONFIG.ssiFetch) {
         res = await runOnce();
       } else {
-        const run = await runWithProxy(store, CONFIG.faskesCode, runOnce);
-        viaProxy = run.proxy;
-        res = run.value;
-        if (run.attempts > 1) console.log(`[sync] proxy ke-${run.attempts} berhasil: ${run.proxy}`);
+        // Satu panggilan mengerjakan satu bulan, supaya offset tetap kecil dan tidak
+        // menabrak 500. Bulan yang selesai dicatat; `done` hanya true setelah bulan terakhir.
+        const months = monthsBetween(startDate, endDate);
+        const saved = await store.getSetting('sweep.month');
+        let idx = saved ? months.findIndex((x) => monthKey(Number(x.start.slice(0, 4)), Number(x.start.slice(5, 7))) === saved) : -1;
+        if (idx < 0) idx = 0;
+
+        const month = months[idx];
+        if (!month) {
+          res = { ok: true, done: true, pages: 0, fetched: 0, inserted: 0, updated: 0, unchanged: 0, message: 'tidak ada bulan dalam rentang' } as Awaited<ReturnType<typeof runSync>>;
+        } else {
+          const run = await runWithProxy(store, CONFIG.faskesCode, () => runOnce(month));
+          viaProxy = run.proxy;
+          res = run.value;
+          if (run.attempts > 1) console.log(`[sync] proxy ke-${run.attempts} berhasil: ${run.proxy}`);
+          if (res.done) {
+            const next = months[idx + 1];
+            await store.setSetting('sweep.month', next ? monthKey(Number(next.start.slice(0, 4)), Number(next.start.slice(5, 7))) : '');
+            res = { ...res, done: !next, message: `${res.message} · ${month.start.slice(0, 7)}` + (next ? `, lanjut ${next.start.slice(0, 7)}` : ' (selesai)') } as Awaited<ReturnType<typeof runSync>>;
+          }
+        }
       }
       await store.finishRun(runId, {
         status: res.ok ? 'ok' : 'failed', pages: res.pages, fetched: res.fetched,
