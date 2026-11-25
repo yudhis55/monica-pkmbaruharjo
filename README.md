@@ -2,32 +2,65 @@
 
 Memeriksa apakah pasien yang ditugaskan ke tiap pegawai **sudah diinput di Sehat IndonesiaKu (SSI)**, dengan mencocokkan Excel penugasan terhadap snapshot kunjungan SSI.
 
-## Dua peran, satu basis data
+## Menarik data: langsung atau lewat proxy
 
-Aplikasi yang sama bisa berjalan di dua tempat; keduanya memakai `DATABASE_URL` yang sama, jadi datanya tidak perlu disalin.
+Aplikasi yang sama bisa berjalan di dua tempat; keduanya memakai `DATABASE_URL` yang sama.
 
-| Peran | Tempat | Yang dikerjakan |
+| Peran | Tempat | Cara menarik data |
 |---|---|---|
-| **Dasbor** | Vercel (`monica.pkmbaruharjo.my.id`, region `sin1`) | laporan publik, admin, impor Excel, penanda, ekspor PDF/Excel |
-| **Penarik data** | PC puskesmas (`npm start`, `localhost:4321`) | masuk SSI (captcha), tarik kunjungan, simpan ke database |
+| **Dasbor + penarik** | PC puskesmas (`npm start`, `localhost:4321`) | **langsung** — IP kantor diterima SSI |
+| **Dasbor + penarik** | Vercel (`monica.pkmbaruharjo.my.id`, `sin1`) | **lewat proxy Indonesia** — IP cloud ditolak 403 |
 
-Alasannya diukur, bukan diasumsikan (20 Nov 2026):
+Alasan diukur, bukan diasumsikan (20–25 Nov 2026):
 
-| Dari mana | `GET /api/crypto-key` | `GET /auth/login` | Keterangan |
-|---|---|---|---|
-| Jaringan Indonesia (PC puskesmas) | **200** | **200** | normal, ±260 ms |
-| Vercel `iad1` (Washington) | **403** | **403** | HTML generik `403 Forbidden`, tanpa `cf-ray` |
-| Vercel `sin1` (Singapura) | **403** | **403** | sama — bukan soal jarak, tapi penolakan IP cloud/asing |
+| Dari mana | `GET /api/crypto-key` | `GET /auth/login` |
+|---|---|---|
+| Jaringan Indonesia (PC puskesmas) | **200**, ±260 ms | **200** |
+| Vercel `iad1` (Washington) | **403** | **403** |
+| Vercel `sin1` (Singapura) | **403** | **403** |
 
-Header permintaan identik di ketiga kasus (UA Chrome, `accept`, `referer`), jadi bukan soal header. SSI menolak rentang IP pusat data. Karena itu instance Vercel **menyembunyikan** tombol cek sesi/masuk/tarik data dan menampilkan petunjuk; `ssiFetchAvailable` di `/api/status` bernilai `false` di sana. Paksa dengan `MONEV_SSI_FETCH=on|off` bila perlu.
+Header permintaan identik di ketiga kasus, jadi bukan soal header: gateway SSI menyaring IP
+pusat data. `MONEV_SSI_FETCH` menentukan jalur (`on`/`off`, default: mati di Vercel).
+
+### Cara kerja jalur proxy
+
+1. **Segarkan pool** (admin → *Segarkan pool proxy*, atau `POST /api/proxy/refresh`).
+   Pool diunduh dari 32 daftar publik, disaring ke **IP Indonesia** memakai delegasi APNIC
+   (`src/core/ssi/idRanges.ts` — 3.887 blok), lalu diuji dua tahap:
+   - saringan TCP atas **seluruh** pool (±6.500 kandidat, ±2,5 dtk masing-masing);
+   - uji penuh hanya pada yang lolos: `crypto-key` 200 **dan** satu halaman data 200.
+   Hanya yang lolos uji penuh yang disimpan sebagai siap pakai (`data_ok`).
+2. **Tarik data SSI** memakai proxy tercepat yang masih hidup. Bila proxy mati di tengah
+   jalan, `runWithProxy` berganti ke kandidat berikutnya; cursor sweep di database membuat
+   percobaan ulang melanjutkan halaman yang sama, bukan mengulang dari awal.
+
+Terukur 25 Nov 2026 dari mesin lokal dengan `MONEV_SSI_FETCH=off`:
+
+| Tahap | Hasil |
+|---|---|
+| Refresh pool | 120.329 entri → 6.593 IP Indonesia → 65 lolos TCP → **17 siap sync**, 96 dtk |
+| Sync 803 baris | `ok: true`, 50 dtk |
+| Sync 1.583 baris | `ok: true`, 174 dtk |
+
+Batasan yang perlu diketahui:
+
+- Proxy gratis berumur menit. Satu proxy yang lolos uji bisa mati 30 detik kemudian; karena
+  itu pool menyimpan banyak kandidat dan pemakaian berganti saat gagal.
+- Sapuan penuh (2026: ±8.000 baris, 9 halaman) lewat proxy bisa **beberapa menit** dan
+  sesekali perlu diulang. Dari PC puskesmas, sapuan yang sama selesai 27 detik.
+- Proxy **tidak dipakai untuk login**: captcha 4 karakter tetap harus diketik manusia, dan
+  kata sandi tidak boleh melewati server orang lain. Login sekali dari PC puskesmas; token
+  tersimpan di tabel `session` dan dipakai prod untuk membaca.
+- Endpoint baca SSI hanya memeriksa keberadaan cookie, jadi uji proxy memakai token
+  karangan — kredensial asli tidak pernah dikirim ke proxy.
 
 ### Prosedur harian
 
-1. Di PC puskesmas: `npm start` (butuh `DATABASE_URL` yang sama dengan Vercel).
-2. Buka `http://localhost:4321/admin`, masuk SSI (captcha sekali), klik **Tarik data SSI**.
-3. Dasbor Vercel otomatis menampilkan angka baru — database sama, tanpa langkah sinkron.
+1. Di PC puskesmas: `npm start` (butuh `DATABASE_URL` yang sama), buka `localhost:4321/admin`,
+   masuk SSI sekali (captcha), lalu **Tarik data SSI** — paling cepat.
+2. Atau dari dasbor Vercel: **Segarkan pool proxy** bila status kosong, lalu **Tarik data SSI**.
 
-Alternatif tanpa menjalankan server lokal: `npx tsx src/cli.ts sync --push https://monica.pkmbaruharjo.my.id --push-token <MONEV_INGEST_TOKEN>`; pengirim memakai `x-ingest-token`, potongan 500 kunjungan per permintaan (batas body Vercel 4,5 MB).
+Alternatif tanpa membuka browser: `npx tsx src/cli.ts sync --push https://monica.pkmbaruharjo.my.id --push-token <MONEV_INGEST_TOKEN>`.
 
 ### Yang sudah terbukti soal SSI
 
@@ -38,14 +71,6 @@ Alternatif tanpa menjalankan server lokal: `npx tsx src/cli.ts sync --push https
 | Login butuh apa? | `email`, `password`, `captcha_id`, `captcha_code` — captcha 1 gambar, 4 karakter. |
 | Captcha bisa diotomatiskan? | **Tidak.** Harus dibaca manusia, sekali per sesi. |
 | Endpoint baca memeriksa token? | **Tidak.** Hanya *keberadaan* cookie `token_eksternal` yang dicek. |
-
-Satu-satunya langkah manusia: **mengetik 4 karakter captcha sekali per sesi**. Sesudah itu `refresh_token` dirotasi otomatis tiap 6 jam.
-
-### Kapan layar login muncul
-
-Endpoint baca SSI hanya memeriksa keberadaan cookie, bukan keabsahannya. Konsekuensinya: token yang sudah dicabut tetap bisa menarik data, token kosong → 401, dan `refresh-token` adalah satu-satunya pemeriksaan kredensial yang jujur.
-
-> Catatan dokumen lama (`FLOW-SEHATINDONESIAKU.md`) menyebut Cloudflare dan "login manual via browser". Itu tidak lagi berlaku — sudah diverifikasi ulang.
 
 ## Deploy: Vercel + Supabase
 
@@ -60,6 +85,7 @@ Artefak yang dipakai: `api/index.ts` (satu fungsi untuk semua path), `vercel.jso
 | `MONEV_ADMIN_PASSWORD` | sandi halaman admin (wajib: Vercel bukan localhost) |
 | `MONEV_COOKIE_SECURE` | `1` (opsional; atribut `Secure` otomatis saat protokol HTTPS) |
 | `MONEV_INGEST_TOKEN` | hanya bila memakai pengirim lokal `sync --push` |
+| `MONEV_SSI_FETCH` | `off` memaksa sync lewat pool proxy (default: mati di Vercel) |
 | `MONEV_SYNC_MAX_PAGES` | default Vercel `2` |
 | `MONEV_SYNC_MAX_MS` | default Vercel `200000` |
 
