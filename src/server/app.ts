@@ -538,8 +538,19 @@ export async function buildApp() {
 
   /** Langkah 1 login: ambil captcha. Gambar ditampilkan ke operator, bukan di-OCR. */
   app.get('/api/session/captcha', async (_req, reply) => {
-    try { return await fetchCaptcha(store); }
-    catch (e: any) { return reply.code(502).send({ error: String(e?.message ?? e) }); }
+    try {
+      // Tanpa jalur langsung (Vercel), captcha pun harus diambil lewat proxy. Dipakai satu
+      // proxy lalu ditutup: state captcha disimpan di DB, jadi POST login boleh memakai
+      // proxy lain asalkan cookie jar-nya ikut (memang ikut, dari state).
+      if (!CONFIG.ssiFetch) {
+        const picked = await pickWorkingProxy(store, CONFIG.faskesCode);
+        if (!picked) return reply.code(503).send({ error: 'Belum ada proxy Indonesia yang lolos uji. Segarkan pool proxy dulu.' });
+        const t = await useProxyTransport(picked.raw);
+        if (!t) return reply.code(503).send({ error: `Proxy ${picked.raw} gagal dipasang.` });
+        try { return await fetchCaptcha(store); } finally { useDirectTransport(); }
+      }
+      return await fetchCaptcha(store);
+    } catch (e: any) { return reply.code(502).send({ error: String(e?.message ?? e) }); }
   });
 
   /** Langkah 2 login: captcha + kredensial. Sesi disimpan di server, tidak pernah ke browser. */
@@ -548,12 +559,26 @@ export async function buildApp() {
     if (!body?.email || !body?.password || !body?.captchaId || !body?.code) {
       return reply.code(400).send({ error: 'email, password, captchaId, dan code wajib.' });
     }
-    const out = await submitLogin(store, {
-      email: String(body.email),
-      password: String(body.password),
-      captchaId: String(body.captchaId),
-      code: String(body.code),
-    });
+    // Sama seperti captcha: di instance tanpa jalur langsung, login lewat proxy. Kredensial
+    // tetap terenkripsi TLS end-to-end ke SSI; proxy hanya meneruskan byte.
+    let out: Awaited<ReturnType<typeof submitLogin>>;
+    if (!CONFIG.ssiFetch) {
+      const picked = await pickWorkingProxy(store, CONFIG.faskesCode);
+      if (!picked) return reply.code(503).send({ error: 'Belum ada proxy Indonesia yang lolos uji. Segarkan pool proxy dulu.' });
+      const t = await useProxyTransport(picked.raw);
+      if (!t) return reply.code(503).send({ error: `Proxy ${picked.raw} gagal dipasang.` });
+      try {
+        out = await submitLogin(store, {
+          email: String(body.email), password: String(body.password),
+          captchaId: String(body.captchaId), code: String(body.code),
+        });
+      } finally { useDirectTransport(); }
+    } else {
+      out = await submitLogin(store, {
+        email: String(body.email), password: String(body.password),
+        captchaId: String(body.captchaId), code: String(body.code),
+      });
+    }
     if (!out.ok) return reply.code(401).send({ error: out.message, reason: out.reason });
 
 

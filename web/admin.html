@@ -17,13 +17,13 @@
   })();
 </script>
 <style>
-  /* Tanpa jalur langsung ke SSI (Vercel), login manual tidak mungkin: form sandi dan
-     tombol cek sesi disembunyikan. Menarik data TETAP tersedia lewat pool proxy. */
-  body.no-ssi #btnProbe, body.no-ssi #btnRefresh, body.no-ssi #sesi,
-  body.no-ssi #probeHelp { display: none; }
+  /* Tanpa jalur langsung ke SSI (Vercel), semua aksi SSI tetap tersedia tetapi berjalan
+     lewat proxy Indonesia. Yang disembunyikan hanya tombol cek sesi (tidak bermakna tanpa
+     sesi baru) — form login TETAP ADA, karena token bisa kedaluwarsa kapan saja. */
+  body.no-ssi #btnProbe, body.no-ssi #probeHelp { display: none; }
   #ssiNotice { display: none; }
   body.no-ssi #ssiNotice { display: block; }
-  body.no-ssi #btnSync::after { content: " (lewat proxy)"; font-weight: 400; opacity: .75; }
+  body.no-ssi #btnSync::after, body.no-ssi #btnLogin::after { content: " (lewat proxy)"; font-weight: 400; opacity: .75; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans.woff2") format("woff2"); font-weight: 400; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-500.woff2") format("woff2"); font-weight: 500; font-display: swap; }
   @font-face { font-family: "Geist"; src: url("/fonts/geist-sans-600.woff2") format("woff2"); font-weight: 600; font-display: swap; }
@@ -268,9 +268,9 @@
     <div class="panel-body">
       <p class="caption" id="ssiNotice">
         Server ini tidak bisa menjangkau SSI: permintaan dari IP cloud dibalas <strong>403</strong>.
-        Tarik data dari PC puskesmas yang memakai jaringan kantor: jalankan <code>npm start</code> dengan
-        <code>DATABASE_URL</code> yang sama, masuk ke SSI di <code>localhost</code>, lalu klik
-        <strong>Tarik data SSI</strong> di sana. Dasbor ini membaca database yang sama.
+        Server ini menarik data lewat <strong>proxy Indonesia</strong>. Pastikan pool sudah terisi
+        (tombol <strong>Segarkan pool proxy</strong> di bawah); tanpa proxy yang lolos uji, SSI
+        tidak bisa dihubungi sama sekali dari sini.
       </p>
       <div class="row">
         <button class="btn" id="btnProbe" type="button">Cek sesi sekarang</button>
@@ -632,7 +632,7 @@ async function loadStatus() {
     $('#stSession').dataset.tone = s.hasSession ? 'ok' : 'warn';
     $('#stSessionSub').textContent = s.hasSession
       ? 'token tersimpan, ' + clock(s.sessionUpdatedAt)
-      : 'belum ada token — login sekali dari PC puskesmas';
+      : 'belum ada token — masuk lewat form di bawah';
     loadProxyInfo();
     return s;
   }
@@ -1437,7 +1437,8 @@ $('#btnLogout').addEventListener('click', async () => {
   try {
     await loadStatus();
     await probe(false);
-    if (canFetchSsi && location.hash === '#sesi') loadCaptcha();
+    // Form login tersedia di kedua mode; captcha dimuat saat bagiannya dibuka.
+    if (location.hash === '#sesi') loadCaptcha();
   } catch (e) {
     log('gagal memuat status: ' + e.message, 'err');
   }

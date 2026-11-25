@@ -1,4 +1,5 @@
 import { BASE_URL, USER_AGENT } from './http.ts';
+import { getTransport } from './transport.ts';
 import type { SessionState } from './session.ts';
 import type { Store } from '../db/store.ts';
 
@@ -23,25 +24,28 @@ export type LoginResult =
  */
 const TTL_MS = 10 * 60_000;
 
-function jarFrom(res: Response): string {
-  return res.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+function jarFrom(setCookies: string[]): string {
+  return setCookies.map((c) => c.split(';')[0]).join('; ');
 }
 
 export async function fetchCaptcha(store: Store): Promise<Captcha> {
   if (!store) throw new Error('fetchCaptcha butuh store untuk menyimpan state captcha');
-  const res = await fetch(`${BASE_URL}/auth/login`, {
+  // Lewat transport: di Vercel `/auth/login` membalas 403 untuk IP cloud, jadi captcha
+  // harus diambil lewat proxy yang sama dengan login-nya.
+  const res = await getTransport().request('/auth/login', {
+    method: 'GET',
     headers: { 'user-agent': USER_AGENT, accept: 'text/html' },
-    signal: AbortSignal.timeout(30_000),
+    timeoutMs: 30_000,
   });
-  if (!res.ok) throw new Error(`captcha: HTTP ${res.status}`);
-  const html = await res.text();
+  if (res.status !== 200) throw new Error(`captcha: HTTP ${res.status}`);
+  const html = res.body;
   const data = html.match(/id="__NUXT_DATA__">([\s\S]*?)<\/script>/);
   if (!data) throw new Error('captcha: payload Nuxt tidak ditemukan');
   const arr = JSON.parse(data[1]) as unknown[];
   const node = arr.find((x) => x && typeof x === 'object' && 'captcha_id' in (x as object)) as any;
   const id = String(arr[node.captcha_id]);
   const image = String(arr[node.captcha_image]);
-  const jar = jarFrom(res);
+  const jar = jarFrom(res.setCookies);
   const expiresAt = Date.now() + TTL_MS;
   await store.saveCaptcha(id, jar, TTL_MS);
   return { id, image, expiresAt: new Date(expiresAt).toISOString() };
@@ -59,7 +63,7 @@ export async function submitLogin(store: Store, input: {
     return { ok: false, reason: 'captcha', message: 'Captcha kedaluwarsa. Muat ulang captcha.' };
   }
 
-  const res = await fetch(`${BASE_URL}/api/user-management/login`, {
+  const res = await getTransport().request('/api/user-management/login', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -75,17 +79,17 @@ export async function submitLogin(store: Store, input: {
       captcha_id: input.captchaId,
       captcha_code: input.code,
     }),
-    signal: AbortSignal.timeout(30_000),
+    timeoutMs: 30_000,
   });
 
-  const text = await res.text();
+  const text = res.body;
   let body: any = null;
   try { body = text ? JSON.parse(text) : null; } catch { /* bukan JSON */ }
   const message = String(body?.data?.meta?.message ?? body?.message ?? '');
 
-  if (res.ok) {
+  if (res.status >= 200 && res.status < 300) {
     const jar = Object.fromEntries(
-      res.headers.getSetCookie().map((c) => {
+      res.setCookies.map((c) => {
         const [pair] = c.split(';');
         const i = pair.indexOf('=');
         return [pair.slice(0, i), pair.slice(i + 1)];
