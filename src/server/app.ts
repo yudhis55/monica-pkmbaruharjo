@@ -1009,20 +1009,30 @@ export async function buildApp() {
     const runId = await store.startRun();
     let viaProxy: string | null = null;
     try {
+      // Run 'running' dari proses yang sudah mati (mis. fungsi serverless kehabisan waktu)
+      // tidak boleh menahan kunci atau mengotori riwayat.
+      await store.recoverInterrupted();
       // Di instance tanpa jalur langsung ke SSI (Vercel: 403 dari IP cloud), sync hanya
       // mungkin lewat proxy Indonesia. Proxy dipilih dan diganti oleh runWithProxy; cursor
       // sweep di DB membuat percobaan ulang melanjutkan halaman yang sama, bukan mengulang.
       const q = (req.query ?? {}) as { pages?: string };
       const maxPages = q.pages ? Math.max(1, Number(q.pages)) : (CONFIG.syncMaxPages > 0 ? CONFIG.syncMaxPages : undefined);
+      // Lewat proxy: halaman lebih kecil dan anggaran waktu lebih pendek, supaya satu
+      // request selalu selesai sebelum batas fungsi dan sisanya dilanjutkan lewat cursor.
+      const proxyMode = !CONFIG.ssiFetch;
+      const pageSize = proxyMode ? Math.min(CONFIG.pageSize, 500) : CONFIG.pageSize;
+      const maxMs = proxyMode
+        ? Math.min(CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : 180_000, 180_000)
+        : (CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : undefined);
       const runOnce = async () => {
         await ensureFreshSession(store);
         return runSync(store, {
           maxPages,
-          maxMs: CONFIG.syncMaxMs > 0 ? CONFIG.syncMaxMs : undefined,
+          maxMs,
           faskesCode: CONFIG.faskesCode,
           startDate,
           endDate,
-          pageSize: CONFIG.pageSize,
+          pageSize,
           userId: CONFIG.userId,
           fullname: CONFIG.fullname,
           partnerCode: CONFIG.partnerCode,

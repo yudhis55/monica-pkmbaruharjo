@@ -63,7 +63,11 @@ class ProxyTransport implements Transport {
 
   async request(path: string, init: { method: 'GET' | 'POST'; headers: Record<string, string>; body?: string; timeoutMs?: number }): Promise<TransportResponse> {
     const s = await this.ensure();
-    const r = await s.request({ ...init, path });
+    // Batas per-request lebih pendek dari default 120 dtk: proxy gratis yang menggantung
+    // harus cepat dinyatakan gagal supaya failover sempat terjadi di dalam batas 300 dtk
+    // fungsi serverless. Halaman data normal selesai < 3 dtk lewat proxy yang sehat.
+    const timeoutMs = Math.min(init.timeoutMs ?? 45_000, 45_000);
+    const r = await s.request({ ...init, path, timeoutMs });
     return { status: r.status, body: r.body, setCookies: r.setCookies, ms: r.ms };
   }
 

@@ -95,7 +95,7 @@ async function probe(spec: ProxySpec, timeoutMs: number, faskesCode: string): Pr
         cookie: `token_eksternal=${'x'.repeat(128)}; asik_web_stk=${jar.asik_web_stk}; asik_web_ctk=${jar.asik_web_ctk}`,
       },
       body: JSON.stringify({ _d: enc }),
-      timeoutMs: Math.max(timeoutMs, 25_000),
+      timeoutMs: Math.max(timeoutMs, 20_000),
     });
     const dataOk = res.status === 200 && res.body.includes('"_d"');
     return {
