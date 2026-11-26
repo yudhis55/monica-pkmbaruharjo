@@ -17,6 +17,9 @@ export function flagKey(petugas: string, nik: string | null): string {
   return normalizeName(petugas).replace(/\s+/g, ' ') + '|' + String(nik ?? '').trim();
 }
 
+/** Baris `app_setting` yang menyimpan batch acuan pilihan admin. */
+const CURRENT_BATCH_KEY = 'current_batch';
+
 // Skema diimpor sebagai string (schema.ts), bukan dibaca dari disk: fungsi serverless
 // dibundel, jadi path relatif modul tidak menunjuk folder sumber.
 import { SCHEMA_PG, SCHEMA_SQLITE } from './schema.ts';
@@ -489,6 +492,12 @@ export class Store {
       patch.matchRule ?? cur.match_rule ?? 'selesai',
       id,
     ]);
+    // Batch acuan harus selalu menunjuk batch aktif; bila statusnya berubah, lepaskan
+    // agar resolveBatch() jatuh ke batch aktif terbaru alih-alih menyimpan rujukan mati.
+    if (patch.status !== undefined && patch.status !== 'aktif') {
+      await this.db.prepare('DELETE FROM app_setting WHERE key = ? AND value = ?')
+        .run([CURRENT_BATCH_KEY, String(id)]);
+    }
     return true;
   }
 
@@ -497,13 +506,42 @@ export class Store {
     return this.db.prepare("SELECT id, name FROM assignment_batch WHERE status = 'aktif' ORDER BY id DESC").all<Pick<BatchRow, 'id' | 'name'>>();
   }
 
-  /** Batch acuan: yang diminta, atau batch aktif terbaru. */
+  /**
+   * Batch acuan: yang diminta, atau yang ditetapkan admin, atau batch aktif terbaru.
+   *
+   * Pilihan admin disimpan di `app_setting` (`current_batch`), bukan hanya di variabel
+   * halaman: dulu tombol "Pakai" cuma mengubah memori browser, sehingga setelah refresh
+   * (atau di perangkat lain) laporan kembali ke batch terbaru.
+   *
+   * Bila batch yang disimpan sudah tidak aktif (diselesaikan/diarsipkan/dihapus), pilihan
+   * itu diabaikan dan jatuh ke batch aktif terbaru — tidak ada laporan yang menunjuk
+   * batch mati.
+   */
   async resolveBatch(id?: number | null): Promise<BatchRow | null> {
     if (id) {
       const b = await this.getBatch(id);
       return b && b.status === 'aktif' ? b : null;
     }
+    const savedId = Number(await this.getSetting(CURRENT_BATCH_KEY));
+    if (Number.isInteger(savedId) && savedId > 0) {
+      const saved = await this.getBatch(savedId);
+      if (saved && saved.status === 'aktif') return saved;
+    }
     return this.db.prepare("SELECT * FROM assignment_batch WHERE status = 'aktif' ORDER BY id DESC LIMIT 1").get<BatchRow>();
+  }
+
+  /** Tetapkan batch acuan. `null` mengembalikan perilaku bawaan (batch aktif terbaru). */
+  async setCurrentBatch(id: number | null): Promise<void> {
+    if (id === null) {
+      await this.db.prepare('DELETE FROM app_setting WHERE key = ?').run([CURRENT_BATCH_KEY]);
+      return;
+    }
+    await this.setSetting(CURRENT_BATCH_KEY, String(id));
+  }
+
+  /** Apakah admin pernah menetapkan batch acuan secara eksplisit. */
+  async hasCurrentBatch(): Promise<boolean> {
+    return (await this.getSetting(CURRENT_BATCH_KEY)) !== null;
   }
 
   /**
@@ -657,6 +695,9 @@ export class Store {
     await this.db.tx(async () => {
       await this.db.prepare('DELETE FROM assignment WHERE batch_id = ?').run([batchId]);
       await this.db.prepare('DELETE FROM assignment_batch WHERE id = ?').run([batchId]);
+      // Jangan tinggalkan batch acuan yang sudah tidak ada.
+      await this.db.prepare('DELETE FROM app_setting WHERE key = ? AND value = ?')
+        .run([CURRENT_BATCH_KEY, String(batchId)]);
     });
   }
 

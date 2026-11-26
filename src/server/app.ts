@@ -786,10 +786,31 @@ export async function buildApp() {
   /* ---------- batch penugasan ---------- */
   app.get('/api/batches', async () => {
     const all = await store.listBatches();
-    // Batch yang sedang dipakai laporan: batch aktif terbaru. Dikirim eksplisit supaya
-    // halaman laporan tidak perlu menebak dari urutan.
+    // Batch acuan yang dipakai laporan: pilihan admin bila masih aktif, jika tidak
+    // batch aktif terbaru. Dikirim eksplisit supaya halaman tidak menebak dari urutan.
     const current = await store.resolveBatch(null);
-    return { batches: all, currentId: current?.id ?? null };
+    return { batches: all, currentId: current?.id ?? null, currentFromSetting: await store.hasCurrentBatch() };
+  });
+
+  /**
+   * Tetapkan batch acuan. Disimpan di database, bukan di variabel halaman: dulu tombol
+   * "Pakai" hilang begitu halaman di-refresh.
+   */
+  app.post('/api/batches/current', async (req, reply) => {
+    const body = req.body as any;
+    if (body?.batchId === null) {
+      await store.setCurrentBatch(null);
+      return { ok: true, currentId: (await store.resolveBatch(null))?.id ?? null };
+    }
+    const id = Number(body?.batchId);
+    if (!Number.isInteger(id) || id <= 0) return reply.code(400).send({ error: 'batchId wajib berupa angka.' });
+    const batch = await store.getBatch(id);
+    if (!batch) return reply.code(404).send({ error: 'Batch tidak ditemukan.' });
+    if (batch.status !== 'aktif') {
+      return reply.code(409).send({ error: 'Hanya batch aktif yang bisa dipakai sebagai acuan laporan.' });
+    }
+    await store.setCurrentBatch(id);
+    return { ok: true, currentId: id };
   });
 
   /** Pilihan syarat "dianggap sudah diinput" + aturan yang kini dipakai tiap batch. */

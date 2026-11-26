@@ -437,8 +437,9 @@
           <span class="caption">satu batch = satu periode</span>
         </div>
         <div class="panel-body">
-          <p>Laporan memakai <strong>batch aktif</strong>. Setiap impor menempel ke batch yang dipilih,
-            jadi impor susulan tidak membuat batch baru.</p>
+          <p>Laporan memakai <strong>batch acuan</strong> — yang bertanda <em>dipakai laporan</em>.
+            Pilihan itu tersimpan di server, jadi tetap sama setelah halaman ditutup atau dibuka
+            dari perangkat lain. Target impor dipilih terpisah di panel Impor.</p>
           <div class="batch-list" id="batchList"></div>
           <details class="alt">
             <summary>Buat batch baru</summary>
@@ -914,7 +915,10 @@ if ($('#btnDetail')) $('#btnDetail').addEventListener('click', async () => {
 
 /* ---------- batch ---------- */
 let batches = [];
+/** Batch acuan laporan — ditetapkan server, dipakai badge + panel setoran + dasar hitung. */
 let currentBatchId = null;
+/** Target impor — pilihan dropdown "Masukkan ke batch"; boleh berbeda dari acuan laporan. */
+let importBatchId = null;
 
 /** Batch cukup nama + tahun: "September 2026". */
 function batchLabel(b) {
@@ -925,18 +929,24 @@ function batchLabel(b) {
 }
 
 async function loadBatches() {
+  let serverCurrentId = null;
   try {
     const j = await (await apiFetch('/api/batches')).json();
     batches = j.batches ?? [];
+    serverCurrentId = j.currentId ?? null;
   } catch (e) {
     log('gagal memuat batch: ' + e.message, 'err');
     return;
   }
   const active = batches.filter((b) => b.status === 'aktif');
-  // Batch aktif terbaru dipakai sebagai acuan; impor menempel ke pilihan ini.
-  currentBatchId = currentBatchId && active.some((b) => b.id === currentBatchId)
-    ? currentBatchId
+  // Acuan laporan selalu dari server (pilihan admin tersimpan). Target impor dipertahankan
+  // selama batch-nya masih aktif, supaya memilih batch di dropdown tidak dilawan muat ulang.
+  currentBatchId = serverCurrentId && active.some((b) => b.id === serverCurrentId)
+    ? serverCurrentId
     : (active[0]?.id ?? null);
+  importBatchId = importBatchId && active.some((b) => b.id === importBatchId)
+    ? importBatchId
+    : (currentBatchId ?? active[0]?.id ?? null);
 
   $('#batchList').innerHTML = batches.length
     ? batches.map((b) => {
@@ -953,7 +963,7 @@ async function loadBatches() {
         return '<div class="batch-row"' + (b.id === currentBatchId ? ' data-current="1"' : '') + '>' +
           '<div class="bn">' + esc(batchLabel(b)) +
             '<span class="batch-badge" data-s="' + esc(b.status) + '">' + esc(b.status) + '</span>' +
-            (b.id === currentBatchId && active.length > 1 ? '<span class="batch-badge" data-s="aktif">dipakai laporan</span>' : '') +
+            (b.id === currentBatchId ? '<span class="batch-badge" data-s="aktif">dipakai laporan</span>' : '') +
           '</div>' +
           '<div class="batch-actions">' + actions + '</div>' +
           '<div class="bm">' + fmt(rows) + ' baris · ' + fmt(b.petugas_count ?? 0) + ' petugas · ' +
@@ -962,25 +972,42 @@ async function loadBatches() {
       }).join('')
     : '<div class="batch-row"><div class="bm">Belum ada batch. Buat satu dulu, lalu impor Excel ke dalamnya.</div></div>';
 
-  const opts = active.map((b) => '<option value="' + b.id + '"' + (b.id === currentBatchId ? ' selected' : '') + '>' + esc(batchLabel(b)) + '</option>').join('');
+  const opts = active.map((b) => '<option value="' + b.id + '"' + (b.id === importBatchId ? ' selected' : '') + '>' + esc(batchLabel(b)) + '</option>').join('');
   $('#importBatch').innerHTML = opts || '<option value="">— belum ada batch aktif —</option>';
   // Tanpa batch, form impor tetap terlihat: tombolnya dinonaktifkan, bukan mengosongkan daftar.
   if (!batches.length) $('#btnImport').disabled = true;
-  $('#btnImport').disabled = !$('#file').files?.[0] || !currentBatchId;
+  $('#btnImport').disabled = !$('#file').files?.[0] || !importBatchId;
   // Template & unggah tanda mengikuti batch yang dipakai laporan.
   if ($('#btnTemplate')) wireTemplateButton();
   loadPerPetugas();
   loadMatchRules();
   if ($('#btnFlagImport')) setFlagFile($('#flagFile').files?.[0]);
-  return currentBatchId;
+  return importBatchId;
 }
 
 $('#batchList').addEventListener('click', async (event) => {
   const use = event.target.closest('button[data-batch-use]');
   if (use) {
-    currentBatchId = Number(use.dataset.batchUse);
-    await loadBatches();
-    log('batch acuan: ' + (batches.find((b) => b.id === currentBatchId)?.name ?? currentBatchId));
+    const id = Number(use.dataset.batchUse);
+    const btn = use;
+    busy(btn, true, 'Menyimpan…');
+    try {
+      // Disimpan di server, bukan hanya di variabel halaman: kalau hanya di sini,
+      // refresh mengembalikan laporan ke batch sebelumnya.
+      const res = await apiFetch('/api/batches/current', {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ batchId: id }),
+      });
+      const j = await res.json();
+      if (!res.ok) throw new Error(j.error);
+      currentBatchId = j.currentId ?? id;
+      await loadBatches();
+      log('batch acuan disimpan: ' + (batches.find((b) => b.id === currentBatchId)?.name ?? currentBatchId));
+    } catch (e) {
+      log('gagal menyimpan batch acuan: ' + e.message, 'err');
+    } finally {
+      busy(btn, false, null, 'Pakai');
+    }
     return;
   }
   const toggle = event.target.closest('button[data-batch-status]');
@@ -1012,6 +1039,7 @@ $('#batchList').addEventListener('click', async (event) => {
     if (!res.ok) throw new Error(j.error);
     log('batch ' + id + ' dihapus');
     if (currentBatchId === id) currentBatchId = null;
+    if (importBatchId === id) importBatchId = null;
     await loadBatches();
   } catch (e) {
     log('gagal menghapus batch: ' + e.message, 'err');
@@ -1033,7 +1061,7 @@ $('#btnNewBatch').addEventListener('click', async () => {
     const j = await res.json();
     if (!res.ok) throw new Error(j.error);
     $('#nbName').value = '';
-    currentBatchId = j.id;
+    importBatchId = j.id;
     log('batch dibuat: ' + name + ' ' + year);
     await loadBatches();
   } catch (e) {
@@ -1043,13 +1071,16 @@ $('#btnNewBatch').addEventListener('click', async () => {
   }
 });
 
-$('#importBatch').addEventListener('change', () => { currentBatchId = Number($('#importBatch').value) || null; });
+$('#importBatch').addEventListener('change', () => {
+  importBatchId = Number($('#importBatch').value) || null;
+  if ($('#btnImport')) $('#btnImport').disabled = !$('#file').files?.[0] || !importBatchId;
+});
 
 /* impor */
 $('#file').addEventListener('change', () => {
   const f = $('#file').files?.[0];
   $('#fileName').textContent = f ? f.name : 'belum ada file';
-  $('#btnImport').disabled = !f || !currentBatchId;
+  $('#btnImport').disabled = !f || !importBatchId;
   if ($('#btnPrecheck')) $('#btnPrecheck').disabled = !f;
   if ($('#precheckResult')) $('#precheckResult').hidden = true;
 });
@@ -1071,13 +1102,13 @@ function bytesToBase64(bytes) {
 async function filePayload() {
   const f = $('#file').files?.[0];
   if (!f) throw new Error('Pilih file Excel dulu');
-  if (!currentBatchId) throw new Error('Buat atau pilih batch dulu');
+  if (!importBatchId) throw new Error('Buat atau pilih batch dulu');
   const buf = new Uint8Array(await f.arrayBuffer());
   return {
     filename: f.name,
     base64: bytesToBase64(buf),
     size: buf.length,
-    batchId: currentBatchId,
+    batchId: importBatchId,
   };
 }
 
@@ -1169,7 +1200,7 @@ $('#btnImport').addEventListener('click', async () => {
 /* ---------- tanda tidak valid lewat Excel ---------- */
 function setFlagFile(f) {
   $('#flagFileName').textContent = f ? f.name : 'belum ada file';
-  $('#btnFlagImport').disabled = !f || !currentBatchId;
+  $('#btnFlagImport').disabled = !f || !importBatchId;
 }
 
 /**
@@ -1191,14 +1222,14 @@ $('#btnFlagImport').addEventListener('click', async () => {
   const btn = $('#btnFlagImport');
   const f = $('#flagFile').files?.[0];
   if (!f) return;
-  if (!currentBatchId) { log('pilih batch aktif dulu', 'err'); return; }
+  if (!importBatchId) { log('pilih batch aktif dulu', 'err'); return; }
   busy(btn, true, 'Menerapkan…');
   const box = $('#bulkResult');
   try {
     const buf = new Uint8Array(await f.arrayBuffer());
     const res = await apiFetch('/api/flags/import', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ filename: f.name, base64: bytesToBase64(buf), batchId: currentBatchId }),
+      body: JSON.stringify({ filename: f.name, base64: bytesToBase64(buf), batchId: importBatchId }),
     });
     const j = await res.json();
     if (!res.ok) throw new Error(j.error);
@@ -1243,7 +1274,7 @@ async function downloadTemplate(event) {
   const btn = $('#btnTemplate');
   busy(btn, true, 'Menyiapkan…');
   try {
-    const url = '/api/flags/template' + (currentBatchId ? '?batch=' + encodeURIComponent(currentBatchId) : '');
+    const url = '/api/flags/template' + (importBatchId ? '?batch=' + encodeURIComponent(importBatchId) : '');
     const res = await apiFetch(url);
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
@@ -1272,7 +1303,7 @@ async function downloadAssignTemplate() {
   const btn = $('#btnAssignTemplate');
   busy(btn, true, 'Menyiapkan…');
   try {
-    const url = '/api/assign/template' + (currentBatchId ? '?batch=' + encodeURIComponent(currentBatchId) : '');
+    const url = '/api/assign/template' + (importBatchId ? '?batch=' + encodeURIComponent(importBatchId) : '');
     const res = await apiFetch(url);
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
