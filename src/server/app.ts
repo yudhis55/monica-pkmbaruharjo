@@ -30,6 +30,34 @@ const LOOPBACK = new Set(['127.0.0.1', '::1', 'localhost']);
  *  - `startServer()` (proses panjang: lokal, container)
  *  - `api/index.ts` (serverless: Vercel menyerahkan req/res Node mentah)
  */
+/** Kunci bulan `YYYY-MM` untuk cursor sapuan. */
+function monthKey(y: number, m: number): string {
+  return `${y}-${String(m).padStart(2, '0')}`;
+}
+
+/**
+ * Pecah rentang tanggal jadi bulan kalender. Mode proxy menyapu satu bulan per panggilan
+ * (offset besar ditolak 500), jadi UI perlu tahu total bulan dan posisi sekarang.
+ */
+function monthsBetween(from: string, to: string): Array<{ start: string; end: string }> {
+  const out: Array<{ start: string; end: string }> = [];
+  const startD = new Date(`${from}T00:00:00Z`);
+  const endD = new Date(`${to}T00:00:00Z`);
+  if (Number.isNaN(startD.getTime()) || Number.isNaN(endD.getTime())) return out;
+  let y = startD.getUTCFullYear();
+  let m = startD.getUTCMonth();
+  while (y < endD.getUTCFullYear() || (y === endD.getUTCFullYear() && m <= endD.getUTCMonth())) {
+    const first = new Date(Date.UTC(y, m, 1));
+    const last = new Date(Date.UTC(y, m + 1, 0));
+    const s1 = first.toISOString().slice(0, 10);
+    const s2 = last.toISOString().slice(0, 10);
+    out.push({ start: s1 > from ? s1 : from, end: s2 < to ? s2 : to });
+    m++;
+    if (m > 11) { m = 0; y++; }
+  }
+  return out;
+}
+
 export async function buildApp() {
   // Tanpa sandi, halaman admin terbuka untuk siapa pun yang bisa menjangkau server.
   // Di localhost itu wajar; di jaringan puskesmas tidak.
@@ -374,6 +402,7 @@ export async function buildApp() {
       syncing,
       ssiFetchAvailable: CONFIG.ssiFetch,
       ...(await sweepRange()),
+      ...(await sweepProgress()),
     };
   });
 
@@ -1095,6 +1124,24 @@ export async function buildApp() {
     };
   }
 
+  /**
+   * Posisi sapuan bulanan untuk mode proxy. Tanpa ini UI hanya tahu "tarik selesai"
+   * padahal satu klik cuma menyapu sebagian; pengguna mengira datanya sudah lengkap.
+   */
+  async function sweepProgress(): Promise<{ sweep: { month: string | null; index: number; total: number; done: boolean } }> {
+    const { startDate, endDate } = await sweepRange();
+    const months = monthsBetween(startDate, endDate);
+    if (CONFIG.ssiFetch || !months.length) {
+      return { sweep: { month: null, index: 0, total: 1, done: true } };
+    }
+    const saved = await store.getSetting('sweep.month');
+    // `sweep.month` kosong berarti sapuan sudah menyentuh bulan terakhir.
+    if (!saved) return { sweep: { month: null, index: months.length, total: months.length, done: true } };
+    const idx = months.findIndex((x) => monthKey(Number(x.start.slice(0, 4)), Number(x.start.slice(5, 7))) === saved);
+    if (idx < 0) return { sweep: { month: null, index: 0, total: months.length, done: false } };
+    return { sweep: { month: saved, index: idx, total: months.length, done: false } };
+  }
+
   app.post('/api/sync', async (req, reply) => {
     // Owner unik per pemanggilan: pid tidak unik di serverless, dan lease-lah yang
     // menentukan lock bebas, bukan pemeriksaan proses.
@@ -1126,25 +1173,6 @@ export async function buildApp() {
        * sedangkan per bulan lolos. Karena itu sapuan dipecah per bulan, dengan progres
        * disimpan di `sweep.month` supaya panggilan berikutnya melanjutkan bulan berikutnya.
        */
-      const monthKey = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
-      const monthsBetween = (from: string, to: string): Array<{ start: string; end: string }> => {
-        const out: Array<{ start: string; end: string }> = [];
-        const startD = new Date(`${from}T00:00:00Z`);
-        const endD = new Date(`${to}T00:00:00Z`);
-        if (Number.isNaN(startD.getTime()) || Number.isNaN(endD.getTime())) return out;
-        let y = startD.getUTCFullYear();
-        let m = startD.getUTCMonth();
-        while (y < endD.getUTCFullYear() || (y === endD.getUTCFullYear() && m <= endD.getUTCMonth())) {
-          const first = new Date(Date.UTC(y, m, 1));
-          const last = new Date(Date.UTC(y, m + 1, 0));
-          const s1 = first.toISOString().slice(0, 10);
-          const s2 = last.toISOString().slice(0, 10);
-          out.push({ start: s1 > from ? s1 : from, end: s2 < to ? s2 : to });
-          m++;
-          if (m > 11) { m = 0; y++; }
-        }
-        return out;
-      };
 
       const runOnce = async (range: { start: string; end: string } = { start: startDate, end: endDate }) => {
         await ensureFreshSession(store);

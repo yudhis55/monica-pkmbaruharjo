@@ -72,6 +72,9 @@
     --shadow: none;
   }
   * { box-sizing: border-box; }
+  /* Wajib: banyak elemen memakai atribut `hidden` (tombol, hasil, ikon tema), sedangkan
+     aturan kelas seperti `.btn { display: inline-flex }` mengalahkan gaya bawaan browser. */
+  [hidden] { display: none !important; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--bg); color: var(--text);
@@ -124,19 +127,62 @@
   .page-head p { margin: 0; color: var(--muted); font-size: 14px; }
   .page-actions { display: flex; align-items: center; gap: 8px; }
 
-  /* ---------- kartu ringkas ---------- */
-  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; box-shadow: var(--shadow); }
-  .card .k { font-size: 12px; color: var(--soft); display: flex; align-items: center; gap: 6px; }
-  .card .v { font-size: 21px; font-weight: 600; margin-top: 3px; letter-spacing: -.01em; display: flex; align-items: center; gap: 8px; }
-  .card .s { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
-  .card .v[data-tone="ok"] { color: var(--ok); }
-  .card .v[data-tone="bad"] { color: var(--alert); }
-  .card .v[data-tone="warn"] { color: var(--warn); }
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--soft); flex: none; }
-  .dot[data-tone="ok"] { background: var(--ok); }
-  .dot[data-tone="bad"] { background: var(--alert); }
-  .dot[data-tone="warn"] { background: var(--warn); }
+
+  /* ---------- alur tarik data ---------- */
+  .syncflow .flow-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding: 18px 20px; border-bottom: 1px solid var(--line-soft);
+  }
+  .syncflow .flow-head h2 { margin: 0; font-size: 17px; font-weight: 600; }
+  .syncflow .flow-sub { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+  .syncflow .flow-sub b { color: var(--text); font-weight: 600; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+    font-size: 12.5px; font-weight: 500; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); background: var(--panel-2);
+  }
+  .pill[data-tone="ok"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 35%, transparent); background: var(--ok-bg); }
+  .pill[data-tone="warn"] { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 35%, transparent); background: var(--warn-bg); }
+  .pill[data-tone="bad"] { color: var(--alert); border-color: color-mix(in srgb, var(--alert) 35%, transparent); background: var(--alert-bg); }
+
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .step {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr) max-content;
+    gap: 14px; align-items: start; padding: 16px 20px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .step:last-child { border-bottom: 0; }
+  .step .num {
+    display: grid; place-items: center; width: 26px; height: 26px; margin-top: 1px;
+    border-radius: 50%; border: 1px solid var(--line);
+    font-size: 13px; font-weight: 600; color: var(--muted);
+  }
+  .step h3 { margin: 0; font-size: 14.5px; font-weight: 600; }
+  .step-state { margin: 3px 0 0; font-size: 13px; color: var(--muted); }
+  .step-state[data-tone="ok"] { color: var(--ok); }
+  .step-state[data-tone="warn"] { color: var(--warn); }
+  .step-state[data-tone="bad"] { color: var(--alert); }
+  #stSession[data-tone="ok"] { color: var(--ok); }
+  #stSession[data-tone="bad"] { color: var(--alert); }
+  .step-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; align-items: flex-start; }
+  .step .alt { margin-top: 10px; border-top-style: dotted; padding-top: 8px; }
+  .step .alt > summary { font-size: 12.5px; }
+  .step .alt p:first-of-type { margin-top: 8px; }
+
+  /* Status per langkah: angka memberi isyarat tanpa harus membaca teks. */
+  .step[data-state="ok"] .num { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
+  .step[data-state="warn"] .num { border-color: var(--warn); color: var(--warn); background: var(--warn-bg); }
+  .step[data-state="na"] { opacity: .6; }
+  .step[data-state="na"] .num { border-style: dashed; }
+  .step[data-state="pending"] { opacity: .55; }
+  .step[data-state="active"] { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--text); }
+
+  .progress { height: 6px; border-radius: 3px; background: var(--line-soft); overflow: hidden; margin-top: 8px; max-width: 520px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--ok); transition: width .3s; }
+
+  .logbox { border-top: 1px solid var(--line-soft); }
+  .loghead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; }
+  .logbox .log { border-top: 1px solid var(--line-soft); border-radius: 0 0 var(--r) var(--r); max-height: 220px; }
 
   /* ---------- panel/section ---------- */
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); margin-bottom: var(--gap); }
@@ -241,10 +287,6 @@
   .notice[data-tone="ok"] { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok) 30%, transparent); color: var(--ok); }
   .notice[data-tone="bad"] { background: var(--alert-bg); border-color: color-mix(in srgb, var(--alert) 30%, transparent); color: var(--alert); }
   .notice[hidden] { display: none; }
-  #ssiNotice { display: none; }
-  body.no-ssi #ssiNotice { display: block; }
-  body.no-ssi #btnProbe, body.no-ssi #probeHelp { display: none; }
-  body.no-ssi #btnSync::after, body.no-ssi #btnLogin::after { content: " · proxy"; font-weight: 400; opacity: .7; }
 
   /* gerbang sandi */
   dialog.gate { border: 1px solid var(--line); border-radius: var(--r); padding: 0; background: var(--panel); color: var(--text); width: min(420px, calc(100vw - 32px)); box-shadow: 0 20px 60px rgba(0,0,0,.25); }
@@ -297,6 +339,13 @@
     .main { padding: 18px 16px 48px; }
     .page-head h1 { font-size: 20px; }
     .row .btn { flex: 1 1 auto; }
+    /* Layar sempit: tombol langkah pindah ke baris sendiri, kalau tidak teks statusnya
+       terjepit jadi satu kata per baris. */
+    .step { grid-template-columns: 26px minmax(0, 1fr); row-gap: 10px; }
+    .step-actions { grid-column: 1 / -1; justify-content: flex-start; }
+    .step-actions .btn { flex: 1 1 auto; }
+    .syncflow .flow-head { padding: 16px; }
+    .step { padding: 14px 16px; }
     .batch-row { grid-template-columns: 1fr; }
     .batch-actions { justify-content: flex-start; }
   }
@@ -319,9 +368,9 @@
         </div>
       </div>
       <nav aria-label="Bagian admin">
-        <a href="#statusPanel" aria-current="page">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 3h5v5H3zM12 3h5v5h-5zM3 12h5v5H3zM12 12h5v5h-5z" stroke="currentColor" stroke-width="1.5" /></svg>
-          <span>Ringkasan</span>
+        <a href="#flow" aria-current="page">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 3v10m0 0-3.5-3.5M10 13l3.5-3.5M4 16.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Tarik data</span>
         </a>
         <a href="#batchPanel">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
@@ -339,9 +388,9 @@
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 3h9l3 3v11H4zM7 3v4h6" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" /><path d="M7.5 13.5l1.8 1.8 3.4-3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
           <span>Setoran</span>
         </a>
-        <a href="#sesi">
-          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="10" cy="8" r="3.2" stroke="currentColor" stroke-width="1.5" /><path d="M4 17c.6-2.8 3-4.4 6-4.4s5.4 1.6 6 4.4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" /></svg>
-          <span>Sesi SSI</span>
+        <a href="#exportPanel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 17V7m0 0L6.5 10.5M10 7l3.5 3.5M4 3.5h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" /></svg>
+          <span>Ekspor</span>
         </a>
       </nav>
       <div class="side-foot">
@@ -355,7 +404,7 @@
       <div class="page-head">
         <div>
           <h1>Admin</h1>
-          <p>Kelola batch penugasan, impor Excel, dan tarikan data SSI.</p>
+          <p>Menarik data SSI, mengelola penugasan, dan mengekspor laporan.</p>
         </div>
         <div class="page-actions">
           <button class="icon-btn" id="themeBtn" type="button" title="Ganti tema terang/gelap">
@@ -367,67 +416,134 @@
               <path d="M10 1.8v2.1M10 16.1v2.1M1.8 10h2.1M16.1 10h2.1M4.2 4.2l1.5 1.5M14.3 14.3l1.5 1.5M15.8 4.2l-1.5 1.5M5.7 14.3l-1.5 1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
             </svg>
           </button>
-          <button class="btn primary" id="btnSync" type="button">Tarik data SSI</button>
         </div>
       </div>
 
-      <div class="cards">
-        <div class="card">
-          <div class="k">Sesi SSI</div>
-          <div class="v" id="stSession">memeriksa…</div>
-          <div class="s" id="stSessionSub"></div>
+      <section class="panel syncflow" id="flow">
+        <div class="flow-head">
+          <div>
+            <h2>Tarik Data SSI</h2>
+            <p class="flow-sub">Kunjungan tersimpan <b id="stVisits">—</b> · <span id="stSync">memeriksa…</span></p>
+          </div>
+          <span class="pill" id="flowState" data-tone="warn">memeriksa…</span>
         </div>
-        <div class="card">
-          <div class="k">Kunjungan tersimpan</div>
-          <div class="v" id="stVisits">—</div>
-          <div class="s" id="stSync"></div>
-        </div>
-        <div class="card">
-          <div class="k">Sinkronisasi terakhir</div>
-          <div class="v" id="stBatch">—</div>
-          <div class="s" id="stBatchSub"></div>
-        </div>
-      </div>
 
-      <section class="panel" id="statusPanel">
-        <div class="panel-head">
-          <h2>Kendali data</h2>
-          <span class="spacer"></span>
-          <button class="btn sm" id="btnProbe" type="button">Cek sesi</button>
-          <button class="btn sm" id="btnRefresh" type="button">Perpanjang sesi</button>
-        </div>
-        <div class="panel-body">
-          <p class="notice" id="ssiNotice" data-tone="warn">
-            Server ini tidak bisa menjangkau SSI langsung: permintaan dari IP cloud dibalas <strong>403</strong>.
-            Tarikan lewat <strong>proxy Indonesia</strong> — pastikan pool terisi sebelum menarik data.
-          </p>
-          <p id="probeHelp" class="hint">Pemeriksaan sesi berjalan otomatis saat halaman dibuka (maksimal sekali per menit).</p>
-          <details class="alt">
-            <summary>Rentang tarik data</summary>
-            <div class="row" id="sweepRow" style="margin-top:10px">
-              <div class="field" style="flex:0 1 165px">
-                <label for="sweepStart">Mulai</label>
-                <input id="sweepStart" type="date" />
-              </div>
-              <div class="field" style="flex:0 1 165px">
-                <label for="sweepEnd">Sampai</label>
-                <input id="sweepEnd" type="date" />
-              </div>
-              <button class="btn" id="btnSweepSave" type="button">Simpan</button>
-              <span class="caption" id="sweepInfo">—</span>
+        <ol class="steps">
+          <li class="step" id="stepConn" data-state="pending">
+            <span class="num" aria-hidden="true">1</span>
+            <div class="step-body">
+              <h3>Koneksi ke SSI</h3>
+              <p class="step-state" id="connState">memeriksa…</p>
+              <details class="alt">
+                <summary>Detail teknis</summary>
+                <p class="hint" id="proxyHelp">Dipakai saat server ini tidak bisa menjangkau SSI langsung: permintaan dari IP pusat data ditolak SSI.
+                  Proxy diambil dari daftar publik, disaring ke IP Indonesia, lalu diuji sampai ada yang benar-benar bisa menarik satu halaman data.</p>
+                <p class="hint" id="proxyInfo">memeriksa…</p>
+              </details>
             </div>
-            <p id="sweepHelp" class="hint" style="margin-top:8px">Rentang ini dipakai tombol <strong>Tarik data SSI</strong> dan perintah <code>sync</code> di CLI.
-              Mempersempit rentang mempercepat tarikan: 2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
-          </details>
-          <details class="alt">
-            <summary>Proxy SSI</summary>
-            <div class="row" id="proxyRow" style="margin-top:10px;align-items:center">
-              <button class="btn" id="btnProxyRefresh" type="button">Segarkan pool proxy</button>
-              <span class="caption" id="proxyInfo">memeriksa…</span>
+            <div class="step-actions">
+              <button class="btn" id="btnProxyRefresh" type="button">Siapkan koneksi</button>
             </div>
-            <p id="proxyHelp" class="hint" style="margin-top:8px">Dipakai saat server ini tidak bisa menjangkau SSI langsung.
-              Proxy diambil dari daftar publik, disaring ke IP Indonesia, lalu diuji sampai ada yang benar-benar bisa menarik satu halaman data.</p>
-          </details>
+          </li>
+
+          <li class="step" id="stepSession" data-state="pending">
+            <span class="num" aria-hidden="true">2</span>
+            <div class="step-body">
+              <h3>Masuk ke SSI</h3>
+              <p class="step-state"><span id="stSession">memeriksa…</span></p>
+              <p class="hint" id="stSessionSub"></p>
+              <details class="alt" id="loginBox">
+                <summary>Masuk atau ganti akun</summary>
+                <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+                  <div class="row">
+                    <div class="field" style="flex:1 1 240px">
+                      <label for="email">Email SSI</label>
+                      <input id="email" type="email" autocomplete="username" spellcheck="false" />
+                    </div>
+                    <div class="field" style="flex:1 1 200px">
+                      <label for="password">Kata sandi</label>
+                      <input id="password" type="password" autocomplete="current-password" />
+                    </div>
+                  </div>
+                  <div class="row">
+                    <div class="field">
+                      <label for="code">Kode captcha</label>
+                      <div class="captcha-row">
+                        <button type="button" class="captcha-btn" id="captchaBtn" title="Klik untuk ganti gambar" aria-label="Ganti gambar captcha">
+                          <img id="captcha" alt="Gambar captcha" />
+                          <span class="captcha-msg" id="captchaMsg">Muat captcha</span>
+                        </button>
+                        <input id="code" inputmode="numeric" maxlength="6" autocomplete="off" />
+                      </div>
+                    </div>
+                    <button class="btn primary" id="btnLogin" type="submit">Masuk</button>
+                  </div>
+                </form>
+                <p class="field-error" id="loginInfo" role="alert"></p>
+                <details class="alt">
+                  <summary>Cara lain: tempel cookie dari browser</summary>
+                  <div class="row" style="margin-top:10px">
+                    <div class="field" style="flex:1 1 320px">
+                      <label for="cookie" class="sr">Cookie sesi</label>
+                      <input id="cookie" placeholder="token_eksternal=…; refresh_token=…" spellcheck="false" />
+                    </div>
+                    <button class="btn" id="btnSession" type="button">Sambungkan</button>
+                  </div>
+                </details>
+              </details>
+              <p class="hint" id="probeHelp">Pemeriksaan sesi berjalan otomatis saat halaman dibuka (maksimal sekali per menit).</p>
+            </div>
+            <div class="step-actions">
+              <button class="btn" id="btnProbe" type="button">Cek sesi</button>
+              <button class="btn" id="btnRefresh" type="button">Perpanjang</button>
+            </div>
+          </li>
+
+          <li class="step" id="stepRange" data-state="ready">
+            <span class="num" aria-hidden="true">3</span>
+            <div class="step-body">
+              <h3>Rentang data</h3>
+              <p class="step-state" id="sweepInfo">—</p>
+              <details class="alt">
+                <summary>Ubah rentang</summary>
+                <div class="row" id="sweepRow" style="margin-top:10px">
+                  <div class="field" style="flex:0 1 165px">
+                    <label for="sweepStart">Mulai</label>
+                    <input id="sweepStart" type="date" />
+                  </div>
+                  <div class="field" style="flex:0 1 165px">
+                    <label for="sweepEnd">Sampai</label>
+                    <input id="sweepEnd" type="date" />
+                  </div>
+                  <button class="btn" id="btnSweepSave" type="button">Simpan</button>
+                </div>
+                <p id="sweepHelp" class="hint" style="margin-top:8px">Mempersempit rentang mempercepat tarikan:
+                  2026 saja ±7.900 kunjungan, 2020–2030 ±13.900.</p>
+              </details>
+            </div>
+            <div class="step-actions"></div>
+          </li>
+
+          <li class="step" id="stepSync" data-state="pending">
+            <span class="num" aria-hidden="true">4</span>
+            <div class="step-body">
+              <h3>Tarik data</h3>
+              <p class="step-state" id="syncState">Belum pernah ditarik.</p>
+              <div class="progress" aria-hidden="true"><i id="syncBar"></i></div>
+              <p class="hint" id="stBatchSub"></p>
+            </div>
+            <div class="step-actions">
+              <button class="btn primary" id="btnSync" type="button">Mulai tarik data</button>
+            </div>
+          </li>
+        </ol>
+
+        <div class="logbox">
+          <div class="loghead">
+            <span class="caption">Catatan proses</span>
+            <button class="btn sm" id="btnLogClear" type="button">Bersihkan</button>
+          </div>
+          <div class="log" id="log" role="log" aria-live="polite"></div>
         </div>
       </section>
 
@@ -575,53 +691,6 @@
           </details>
         </div>
       </section>
-
-      <section class="panel" id="sesi">
-        <div class="panel-head"><h2>Masuk ke SSI</h2><span class="caption">diperlukan untuk menarik data</span></div>
-        <div class="panel-body">
-          <form id="loginForm" novalidate style="display:flex;flex-direction:column;gap:14px">
-            <div class="row">
-              <div class="field" style="flex:1 1 240px">
-                <label for="email">Email SSI</label>
-                <input id="email" type="email" autocomplete="username" spellcheck="false" />
-              </div>
-              <div class="field" style="flex:1 1 200px">
-                <label for="password">Kata sandi</label>
-                <input id="password" type="password" autocomplete="current-password" />
-              </div>
-            </div>
-            <div class="row">
-              <div class="field">
-                <label for="code">Kode captcha</label>
-                <div class="captcha-row">
-                  <button type="button" class="captcha-btn" id="captchaBtn" title="Klik untuk ganti gambar" aria-label="Ganti gambar captcha">
-                    <img id="captcha" alt="Gambar captcha" />
-                    <span class="captcha-msg" id="captchaMsg">Klik untuk muat captcha</span>
-                  </button>
-                  <input id="code" inputmode="numeric" maxlength="6" autocomplete="off" />
-                </div>
-              </div>
-              <button class="btn primary" id="btnLogin" type="submit">Masuk</button>
-            </div>
-          </form>
-          <p class="field-error" id="loginInfo" role="alert"></p>
-          <details class="alt">
-            <summary>Cara lain: tempel cookie dari browser</summary>
-            <div class="row" style="margin-top:10px">
-              <div class="field" style="flex:1 1 320px">
-                <label for="cookie" class="sr">Cookie sesi</label>
-                <input id="cookie" placeholder="token_eksternal=…; refresh_token=…" spellcheck="false" />
-              </div>
-              <button class="btn" id="btnSession" type="button">Sambungkan</button>
-            </div>
-          </details>
-        </div>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head"><h2>Aktivitas</h2><span class="caption">jejak tindakan di halaman ini</span></div>
-        <div class="log" id="log" role="log" aria-live="polite"></div>
-      </section>
     </main>
   </div>
 </div>
@@ -664,7 +733,10 @@ function log(message, tone) {
   const t = new Date().toLocaleTimeString('id-ID', { hour12: false });
   el.className = tone ?? '';
   el.innerHTML = '<span class="t">' + t + '</span>  ' + esc(message);
-  $('#log').appendChild(el);
+  const box = $('#log');
+  box.appendChild(el);
+  // Selalu tampilkan baris terbaru: catatan ini yang dibaca saat proses berjalan.
+  box.scrollTop = box.scrollHeight;
 }
 
 // Dideklarasikan sebelum dipakai: `let` di blok berikutnya berada di zona mati (TDZ) saat
@@ -729,8 +801,8 @@ async function apiFetch(url, options) {
 function renderSweep(s) {
   if (s?.startDate) $('#sweepStart').value = s.startDate;
   if (s?.endDate) $('#sweepEnd').value = s.endDate;
-  $('#sweepInfo').textContent = (s?.fromSetting ? 'tersimpan: ' : 'bawaan: ') +
-    (s?.startDate ?? '—') + ' s/d ' + (s?.endDate ?? '—');
+  $('#sweepInfo').textContent = dayLabel(s?.startDate) + ' – ' + dayLabel(s?.endDate)
+    + (s?.fromSetting ? '' : ' (bawaan)');
 }
 
 $('#btnSweepSave').addEventListener('click', async () => {
@@ -763,33 +835,145 @@ function syncVisitsLink() {
 }
 $('#visitsYear').addEventListener('input', syncVisitsLink);
 
+/** Hasil terakhir /api/status; dipakai renderFlow() untuk menentukan kesiapan. */
+let statusNow = null;
+/** Jumlah proxy yang siap dipakai; `null` = belum diperiksa. */
+let proxyReady = null;
+/** 'ok' | 'bad' | 'none' | 'unknown' */
+let sessionState = 'unknown';
+/** Sedang menjalankan /api/sync. */
+let syncingNow = false;
+
+/** "1 Nov 2026" — tanggal polos tanpa jam, untuk rentang. */
+function dayLabel(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Tulis status satu langkah sekaligus nada warnanya. */
+function setStepState(sel, text, tone) {
+  const el = $(sel);
+  el.textContent = text;
+  if (tone) el.dataset.tone = tone;
+  else delete el.dataset.tone;
+}
+
+/**
+ * Satu sumber kebenaran untuk tampilan alur: membaca statusNow + proxyReady +
+ * sessionState lalu menyalakan/mematikan langkah. Dipanggil setelah setiap perubahan.
+ */
+function renderFlow() {
+  const s = statusNow;
+  if (!s) return;
+
+  // ---- langkah 1: koneksi
+  const stepConn = $('#stepConn');
+  const hasProxy = proxyReady === null ? null : proxyReady > 0;
+  // `canFetchSsi` = server bisa menjangkau SSI langsung. Hanya bila TIDAK, proxy dipakai.
+  if (canFetchSsi) {
+    stepConn.dataset.state = 'na';
+    setStepState('#connState', 'Tidak perlu — server ini terhubung langsung ke SSI.', 'ok');
+    $('#btnProxyRefresh').hidden = true;
+    const d = stepConn.querySelector('details');
+    if (d) d.hidden = true;
+  } else {
+    $('#btnProxyRefresh').hidden = false;
+    const d = stepConn.querySelector('details');
+    if (d) d.hidden = false;
+    if (proxyReady === null) {
+      stepConn.dataset.state = 'pending';
+      setStepState('#connState', 'Memeriksa koneksi…', null);
+    } else if (hasProxy) {
+      stepConn.dataset.state = 'ok';
+      setStepState('#connState', proxyReady + ' koneksi siap dipakai.', 'ok');
+    } else {
+      stepConn.dataset.state = 'warn';
+      setStepState('#connState', 'Belum ada koneksi yang lolos uji — klik Siapkan koneksi.', 'warn');
+    }
+  }
+
+  // ---- langkah 2: sesi
+  const stepSession = $('#stepSession');
+  const sessionOk = sessionState === 'ok';
+  stepSession.dataset.state = sessionOk ? 'ok' : sessionState === 'unknown' ? 'pending' : 'warn';
+  $('#stSession').textContent = sessionOk ? 'Sesi aktif'
+    : sessionState === 'none' ? 'Belum masuk'
+    : sessionState === 'bad' ? 'Sesi ditolak SSI'
+    : 'Belum diperiksa';
+  $('#stSession').dataset.tone = sessionOk ? 'ok' : sessionState === 'unknown' ? '' : 'bad';
+  if (!sessionOk && sessionState !== 'unknown' && !$('#stSessionSub').textContent) {
+    $('#stSessionSub').textContent = 'Masuk lewat "Masuk atau ganti akun" di bawah.';
+  }
+
+  // ---- langkah 3: rentang (selalu siap; isinya diisi renderSweep)
+  $('#stepRange').dataset.state = 'ok';
+
+  // ---- langkah 4: tarik data
+  const sweep = s.sweep ?? { index: 0, total: 1, done: true };
+  const total = Math.max(1, Number(sweep.total) || 1);
+  const doneMonths = Math.min(total, Number(sweep.index) || 0);
+  const sweepDone = sweep.done !== false;
+  const connOk = canFetchSsi || hasProxy === true;
+  const canSync = connOk && sessionOk;
+
+  // Bilah hanya bermakna bila sapuan memang dipecah per bulan (mode proxy).
+  const showBar = total > 1;
+  $('#syncBar').parentElement.hidden = !showBar;
+  $('#syncBar').style.width = (sweepDone ? 100 : Math.round((doneMonths / total) * 100)) + '%';
+
+  let syncText;
+  if (syncingNow) syncText = 'Sedang menarik data…';
+  else if (!connOk) syncText = 'Menunggu koneksi siap.';
+  else if (!sessionOk) syncText = 'Menunggu sesi aktif.';
+  else if (!sweepDone) syncText = doneMonths + ' dari ' + total + ' bulan sudah tersapu — klik Lanjutkan.';
+  else if (s.lastSyncAt) syncText = 'Selesai — ' + total + ' dari ' + total + ' bulan.';
+  else syncText = 'Belum pernah ditarik.';
+  setStepState('#syncState', syncText, canSync ? (sweepDone ? 'ok' : 'warn') : null);
+
+  const stepSync = $('#stepSync');
+  stepSync.dataset.state = syncingNow ? 'active' : !canSync ? 'pending' : sweepDone ? 'ok' : 'warn';
+  const btn = $('#btnSync');
+  btn.disabled = !canSync || syncingNow;
+  // Saat masih terhalang, jangan tulis "Lanjutkan"/"Tarik ulang": belum ada yang bisa
+  // dilanjutkan, dan label itu membuat orang mengira tombolnya rusak.
+  btn.textContent = syncingNow ? 'Menarik…'
+    : !canSync ? 'Tarik data'
+    : !sweepDone ? 'Lanjutkan'
+    : s.lastSyncAt ? 'Tarik ulang' : 'Mulai tarik data';
+
+  // ---- pil kesiapan
+  const pill = $('#flowState');
+  if (syncingNow) { pill.dataset.tone = 'warn'; pill.textContent = 'Menarik data…'; }
+  else if (!canSync) { pill.dataset.tone = 'warn'; pill.textContent = 'Belum siap'; }
+  else if (!sweepDone) { pill.dataset.tone = 'warn'; pill.textContent = 'Belum tuntas'; }
+  else { pill.dataset.tone = 'ok'; pill.textContent = 'Siap'; }
+}
+
 async function loadStatus() {
   const s = await (await apiFetch('/api/status')).json();
+  statusNow = s;
   $('#stVisits').textContent = fmt(s.visits);
-  $('#stSync').textContent = 'sinkron ' + relTime(s.lastSyncAt);
-  $('#stBatch').textContent = s.lastSyncStatus ? 'sinkron: ' + s.lastSyncStatus : 'belum sinkron';
-  $('#stBatchSub').textContent = s.lastSyncFetched ? fmt(s.lastSyncFetched) + ' baris terakhir' : '';
+  $('#stSync').textContent = s.lastSyncAt ? 'sinkron ' + relTime(s.lastSyncAt) : 'belum pernah sinkron';
+  $('#stBatchSub').textContent = s.lastSyncAt
+    ? 'Terakhir ' + clock(s.lastSyncAt) + (s.lastSyncFetched ? ' · ' + fmt(s.lastSyncFetched) + ' baris' : '')
+    : '';
   $('#meta').textContent = 'faskes ' + (s.faskesCode ?? '—');
   renderSweep(s);
-  // Instance yang tidak punya jalur ke SSI (Vercel: 403 dari IP cloud) tidak boleh
-  // menampilkan tombol yang pasti gagal; pengguna diberi tahu di mana menarik data.
+
   canFetchSsi = s.ssiFetchAvailable !== false;
-  document.body.classList.toggle('no-ssi', !canFetchSsi);
-  if (!canFetchSsi) {
-    // Sesi SSI hanya bisa diperiksa lewat proxy; statusnya diambil dari proxyStats.
-    $('#stSession').textContent = 'lewat proxy';
-    $('#stSession').dataset.tone = s.hasSession ? 'ok' : 'warn';
-    $('#stSessionSub').textContent = s.hasSession
-      ? 'token tersimpan, ' + clock(s.sessionUpdatedAt)
-      : 'belum ada token — masuk lewat form di bawah';
-    loadProxyInfo();
-    return s;
+  if (s.sessionError) {
+    sessionState = 'bad';
+    $('#stSessionSub').textContent = s.sessionError;
+  } else if (s.hasSession) {
+    sessionState = 'ok';
+    $('#stSessionSub').textContent = 'Diperbarui ' + clock(s.sessionUpdatedAt);
+  } else {
+    sessionState = 'none';
+    $('#stSessionSub').textContent = 'Belum ada sesi tersimpan.';
   }
+  renderFlow();
   loadProxyInfo();
-  const need = !s.hasSession || Boolean(s.sessionError);
-  $('#stSession').textContent = need ? 'tidak aktif' : 'aktif';
-  $('#stSession').dataset.tone = need ? 'bad' : 'ok';
-  $('#stSessionSub').textContent = s.sessionError ?? (s.hasSession ? 'diperbarui ' + clock(s.sessionUpdatedAt) : 'belum ada sesi tersimpan');
   return s;
 }
 
@@ -798,33 +982,37 @@ async function loadProxyInfo() {
   try {
     const j = await (await apiFetch('/api/proxy/stats')).json();
     const st = j.stats ?? {};
+    proxyReady = Number(st.dataOk ?? 0);
     const parts = [];
-    parts.push(st.dataOk ? st.dataOk + ' siap dipakai' : 'belum ada yang lolos uji');
-    if (st.cryptoOk > st.dataOk) parts.push((st.cryptoOk - st.dataOk) + ' baru lolos crypto-key');
+    parts.push(proxyReady ? proxyReady + ' siap dipakai' : 'belum ada yang lolos uji');
+    if (Number(st.cryptoOk ?? 0) > proxyReady) parts.push((st.cryptoOk - proxyReady) + ' baru lolos crypto-key');
     if (st.total) parts.push('pool ' + st.total);
     if (st.lastChecked) parts.push('diuji ' + relTime(st.lastChecked));
-    if (j.transport && j.transport !== 'langsung') parts.push('aktif: ' + j.transport);
+    if (j.transport && j.transport !== 'langsung') parts.push('jalur aktif: ' + j.transport);
     $('#proxyInfo').textContent = parts.join(' · ');
   } catch (e) {
+    proxyReady = null;
     $('#proxyInfo').textContent = 'status proxy tidak terbaca: ' + e.message;
   }
+  renderFlow();
 }
 
 $('#btnProxyRefresh').addEventListener('click', async () => {
   const btn = $('#btnProxyRefresh');
-  busy(btn, true, 'Menyegarkan… (1–3 menit)');
+  busy(btn, true, 'Menyiapkan… (1–3 menit)');
+  log('menyiapkan koneksi — mengunduh dan menguji proxy');
   try {
     const res = await apiFetch('/api/proxy/refresh', { method: 'POST' });
     const j = await res.json();
     if (!res.ok) throw new Error(j.error ?? 'gagal');
-    log('pool proxy: ' + j.indonesian + ' IP Indonesia dari ' + j.fetched + ' entri, '
-      + j.probed + ' diuji → ' + j.cryptoOk + ' lolos crypto-key, ' + j.dataOk + ' siap sync'
-      + ' (' + Math.round(j.ms / 1000) + ' dtk)');
+    log('koneksi: ' + j.indonesian + ' IP Indonesia dari ' + j.fetched + ' entri, '
+      + j.probed + ' diuji → ' + j.cryptoOk + ' lolos crypto-key, ' + j.dataOk + ' siap dipakai'
+      + ' (' + Math.round(j.ms / 1000) + ' dtk)', j.dataOk ? 'ok' : 'warn');
     await loadProxyInfo();
   } catch (e) {
-    log('gagal menyegarkan pool proxy: ' + e.message, 'err');
+    log('gagal menyiapkan koneksi: ' + e.message, 'err');
   } finally {
-    busy(btn, false, null, 'Segarkan pool proxy');
+    busy(btn, false, null, 'Siapkan koneksi');
   }
 });
 
@@ -837,29 +1025,28 @@ async function probe(force) {
     const res = await apiFetch('/api/session/probe' + (force ? '?force=1&record=1' : ''), { method: 'POST' });
     const j = await res.json();
     if (j.state === 'ok') {
-      $('#stSession').textContent = 'aktif';
-      $('#stSession').dataset.tone = 'ok';
-      $('#stSessionSub').textContent = 'diverifikasi ' + clock(j.checkedAt) + (j.cached ? ' (cache)' : '');
-      log('sesi diverifikasi aktif');
+      sessionState = 'ok';
+      $('#stSessionSub').textContent = 'Diverifikasi ' + clock(j.checkedAt) + (j.cached ? ' (cache)' : '');
+      log('sesi terverifikasi aktif');
     } else if (j.state === 'invalid') {
-      $('#stSession').textContent = 'ditolak SSI';
-      $('#stSession').dataset.tone = 'bad';
+      sessionState = 'bad';
       $('#stSessionSub').textContent = j.message;
       log('sesi ditolak: ' + j.message, 'err');
     } else if (j.state === 'none') {
-      $('#stSession').textContent = 'tidak ada sesi';
-      $('#stSession').dataset.tone = 'bad';
-      $('#stSessionSub').textContent = 'masuk lewat halaman laporan';
+      sessionState = 'none';
+      $('#stSessionSub').textContent = 'Belum ada sesi tersimpan.';
+      log('belum ada sesi SSI', 'warn');
     } else {
-      $('#stSession').textContent = 'belum terverifikasi';
-      $('#stSessionSub').textContent = 'pemeriksaan gagal: ' + j.message;
+      sessionState = 'unknown';
+      $('#stSessionSub').textContent = 'Pemeriksaan gagal: ' + j.message;
       log('cek sesi gagal: ' + j.message, 'warn');
     }
+    renderFlow();
     return j;
   } catch (e) {
     log('cek sesi gagal: ' + e.message, 'err');
   } finally {
-    busy(btn, false, null, 'Cek sesi sekarang');
+    busy(btn, false, null, 'Cek sesi');
   }
 }
 
@@ -871,7 +1058,7 @@ $('#btnRefresh').addEventListener('click', async () => {
   try {
     const res = await (await apiFetch('/api/session/refresh', { method: 'POST' })).json();
     if (res.error) throw new Error(res.error);
-    log('sesi diperpanjang');
+    log('sesi diperpanjang', 'ok');
     await loadStatus();
     await probe(true);
   } catch (e) {
@@ -882,21 +1069,30 @@ $('#btnRefresh').addEventListener('click', async () => {
 });
 
 $('#btnSync').addEventListener('click', async () => {
-  const btn = $('#btnSync');
-  busy(btn, true, 'Menarik…');
+  if (syncingNow) return;
+  syncingNow = true;
+  renderFlow();
   log('mulai tarik data SSI');
   try {
     const res = await (await apiFetch('/api/sync', { method: 'POST' })).json();
     if (res.error) throw new Error(res.error);
-    log('selesai: ' + fmt(res.fetched) + ' baris / ' + res.pages + ' halaman · +' + res.inserted + ' baru · ~' + res.updated + ' berubah');
-    await loadStatus();
-    await loadProxyInfo();
-    busy(btn, false, null, 'Tarik ulang');
+    log('selesai: ' + fmt(res.fetched) + ' baris / ' + res.pages + ' halaman · +' + res.inserted
+      + ' baru · ~' + res.updated + ' berubah' + (res.done ? '' : ' — masih ada bulan berikutnya'), res.done ? 'ok' : 'warn');
+    if (res.message) log(res.message);
   } catch (e) {
     log('tarik data gagal: ' + e.message, 'err');
-    busy(btn, false, null, 'Coba lagi');
+  } finally {
+    syncingNow = false;
+    try {
+      await loadStatus();
+    } catch (e) {
+      log('gagal memperbarui status: ' + e.message, 'err');
+    }
+    await loadProxyInfo();
   }
 });
+
+$('#btnLogClear').addEventListener('click', () => { $('#log').innerHTML = ''; });
 
 // Tombolnya sedang disembunyikan dari UI; blok ini tetap siap bila diaktifkan lagi.
 if ($('#btnDetail')) $('#btnDetail').addEventListener('click', async () => {
@@ -1510,13 +1706,12 @@ async function loadCaptcha() {
 $('#captchaBtn').addEventListener('click', loadCaptcha);
 
 /** Captcha baru dimuat ketika bagian "Masuk ke SSI" benar-benar terlihat. */
-if ('IntersectionObserver' in window && $('#sesi')) {
-  const io = new IntersectionObserver((entries) => {
-    if (entries.some((e) => e.isIntersecting) && !$('#captcha').getAttribute('src') && !captchaId) {
-      loadCaptcha();
-    }
-  }, { rootMargin: '200px' });
-  io.observe($('#sesi'));
+if ($('#loginBox')) {
+  // Captcha baru diambil saat form login benar-benar dibuka: satu permintaan ke SSI
+  // per pembukaan, bukan setiap halaman admin dimuat.
+  $('#loginBox').addEventListener('toggle', () => {
+    if ($('#loginBox').open && !$('#captcha').getAttribute('src') && !captchaId) loadCaptcha();
+  });
 }
 
 $('#loginForm').addEventListener('submit', async (event) => {
@@ -1669,9 +1864,7 @@ async function bootData() {
   try {
     await loadStatus();
     await probe(false);
-    // Form login tersedia di kedua mode; captcha dimuat saat bagiannya dibuka,
-    // baik lewat URL #sesi maupun tautan sidebar.
-    if (location.hash === '#sesi') loadCaptcha();
+    // Captcha dimuat saat form login dibuka (lihat listener #loginBox).
   } catch (e) {
     log('gagal memuat status: ' + e.message, 'err');
   }

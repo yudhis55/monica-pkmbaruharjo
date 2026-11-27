@@ -24,13 +24,13 @@ pusat data. `MONEV_SSI_FETCH` menentukan jalur (`on`/`off`, default: mati di Ver
 
 ### Cara kerja jalur proxy
 
-1. **Segarkan pool** (admin → *Segarkan pool proxy*, atau `POST /api/proxy/refresh`).
+1. **Siapkan koneksi** (admin → *Siapkan koneksi* pada langkah 1, atau `POST /api/proxy/refresh`).
    Pool diunduh dari 32 daftar publik, disaring ke **IP Indonesia** memakai delegasi APNIC
    (`src/core/ssi/idRanges.ts` — 3.887 blok), lalu diuji dua tahap:
    - saringan TCP atas **seluruh** pool (±6.500 kandidat, ±2,5 dtk masing-masing);
    - uji penuh hanya pada yang lolos: `crypto-key` 200 **dan** satu halaman data 200.
    Hanya yang lolos uji penuh yang disimpan sebagai siap pakai (`data_ok`).
-2. **Tarik data SSI** memakai proxy tercepat yang masih hidup. Bila proxy mati di tengah
+2. **Mulai tarik data** (langkah 4) memakai proxy tercepat yang masih hidup. Bila proxy mati di tengah
    jalan, `runWithProxy` berganti ke kandidat berikutnya; cursor sweep di database membuat
    percobaan ulang melanjutkan halaman yang sama, bukan mengulang dari awal.
 
@@ -48,8 +48,9 @@ Batasan yang perlu diketahui:
   itu pool menyimpan banyak kandidat dan pemakaian berganti saat gagal.
 - Sapuan lewat proxy **dipecah per bulan**, satu bulan per panggilan, dengan progres di
   `sweep.month`. Alasannya terukur: rentang setahun gagal `500` pada offset besar, sedangkan
-  per bulan lolos. Klik **Tarik data SSI** berulang sampai `done:true` — 12 kali untuk
-  setahun. Dari PC puskesmas, sapuan setahun selesai 27 detik dalam satu kali.
+  per bulan lolos. Tombolnya berubah jadi **Lanjutkan** dan bilah progres menunjukkan
+  bulan yang sudah tersapu; klik sampai `done:true` — 12 kali untuk setahun. Dari PC
+  puskesmas, sapuan setahun selesai 27 detik dalam satu kali.
 - Terukur 25 Nov 2026 dari prod (Vercel, lewat proxy): 2026 penuh selesai 12 panggilan,
   tiap bulan 0,3–106 dtk; total 8.094 baris. Satu bulan bisa gagal (proxy mati) dan
   diulang tanpa kehilangan bulan lain karena progresnya tersimpan.
@@ -64,8 +65,12 @@ Batasan yang perlu diketahui:
 ### Prosedur harian
 
 1. Di PC puskesmas: `npm start` (butuh `DATABASE_URL` yang sama), buka `localhost:4321/admin`,
-   masuk SSI sekali (captcha), lalu **Tarik data SSI** — paling cepat.
-2. Atau dari dasbor Vercel: **Segarkan pool proxy** bila status kosong, lalu **Tarik data SSI**.
+   masuk SSI sekali (captcha), lalu **Mulai tarik data** — paling cepat.
+2. Atau dari dasbor Vercel: **Siapkan koneksi** bila langkah 1 belum hijau, lalu **Mulai tarik data**.
+
+Halaman admin menampilkan alur itu sebagai empat langkah bernomor (koneksi → masuk →
+rentang → tarik). Sebuah langkah hanya bisa dijalankan bila langkah sebelumnya beres, dan
+alasannya ditulis apa adanya ("Menunggu sesi aktif"), bukan sekadar tombol abu-abu.
 
 Alternatif tanpa membuka browser: `npx tsx src/cli.ts sync --push https://monica.pkmbaruharjo.my.id --push-token <MONEV_INGEST_TOKEN>`.
 
@@ -169,7 +174,7 @@ Setiap token diverifikasi dengan `GET /api/user-management/menu` sebelum disimpa
 
 ### 2. Tarik data
 
-Tombol **Tarik data SSI** di web, atau:
+Tombol **Mulai tarik data** di web, atau:
 
 ```bash
 npx tsx src/cli.ts sync                                              # di prod
@@ -239,7 +244,7 @@ Laporan membaca **batch terakhir** yang diimpor.
 - **Kunci sinkron memakai lease** (`sync_lock.expires_at`), bukan `pid`: aman untuk serverless.
   Lease diperpanjang tiap halaman; pemilik mati di host yang sama tetap bisa diambil alih.
 - **Rentang tarik data diatur admin** (Status sistem): disimpan di `app_setting` dan menang atas
-  `SSI_SWEEP_START`/`SSI_SWEEP_END`. Berlaku untuk tombol *Tarik data SSI* dan `sync` di CLI.
+  `SSI_SWEEP_START`/`SSI_SWEEP_END`. Berlaku untuk langkah *Rentang data* di web dan `sync` di CLI.
 - **Tandai & unduh daftar pasien hanya untuk admin.** Tombolnya disembunyikan bagi tamu, dan server
   menolak `POST /api/flags/set` serta `GET /api/patients.xlsx` tanpa sesi admin (401).
 - **Header laporan memakai pemilih batch**, bukan tahun: satu batch = satu periode, sehingga laporan,
